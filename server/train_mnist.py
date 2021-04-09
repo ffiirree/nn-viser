@@ -4,8 +4,7 @@ import torchvision
 import torch.optim as optim
 import torch.nn as nn
 import torchvision.transforms as transforms
-from MNIST import *
-from tiny import MnistNetTiny
+from models import *
 
 def train(train_loader, model, device, criterion, optimizer, scheduler, epoch):
     net.train()
@@ -44,10 +43,22 @@ def test(test_loader, model, device, epoch):
 
         print('\tTest Epoch #{:>2}: {}/{} ({:>3.2f}%)'.format(epoch, correct, total, 100. * correct / total))
 
+class AddGaussianNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        z = torch.randn([28, 28])
+        return torch.mul(tensor, z)
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 if __name__ == '__main__':
     transform = transforms.Compose([
         transforms.ToTensor(),
+        AddGaussianNoise()
         # transforms.Normalize(mean=(0.1307,), std=(0.3081,))
     ])
     train_data = torchvision.datasets.MNIST(

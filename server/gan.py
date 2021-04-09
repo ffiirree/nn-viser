@@ -6,8 +6,7 @@ import torchvision
 import torch.optim as optim
 import torch.nn as nn
 import torchvision.transforms as transforms
-from MNIST import *
-from tiny import *
+from models import *
 import matplotlib.pyplot as plt
 
 def train_c(train_loader, model, device, criterion, optimizer, scheduler, epoch):
@@ -97,7 +96,7 @@ if __name__ == '__main__':
         generator = nn.DataParallel(generator)
     generator.to(device)
 
-    optimizer_g = optim.SGD(generator.parameters(), lr=0.00002, momentum=0.9)
+    optimizer_g = optim.SGD(generator.parameters(), lr=0.0002, momentum=0.9)
     criterion_g = nn.CrossEntropyLoss()
 
     g_labels = torch.tensor([
@@ -115,18 +114,18 @@ if __name__ == '__main__':
     # 1. 仅训练生成器，然后可视化CNN网络，看生成器生成的图片在网络中被提取了什么特征
     # 2. 再训练CNN，查看这和上面的对比有什么区别
     plt.ion()
-    for epoch in range(35):
+    for epoch in range(3):
         for i, (images, labels) in enumerate(train_loader):
 
             #########################################################
             # real data
-            images, labels = images.to(device), labels.to(device)
+            # images, labels = images.to(device), labels.to(device)
 
-            z = torch.mul(torch.randn(batch_size, nz), 0.1).to(device)
-            # z = torch.randn(batch_size, nz).to(device)
+            # z = torch.mul(torch.randn(batch_size, nz), 0.1).to(device)
+            z = torch.randn(batch_size, nz).to(device)
             fake_images = generator(z, g_labels)
                
-            classifier.zero_grad()
+            # classifier.zero_grad()
 
             # if i % 10 == 0:
             #     # fake data
@@ -140,15 +139,15 @@ if __name__ == '__main__':
                 # loss.backward()
 
             
-            output = classifier(images)
-            # print(torch.max(output, 1).indices)
-            loss_c_real = criterion_c(output, labels)
-            loss_c_real.backward()
-            optimizer_c.step()
+            # output = classifier(images)
+            # # print(torch.max(output, 1).indices)
+            # loss_c_real = criterion_c(output, labels)
+            # loss_c_real.backward()
+            # optimizer_c.step()
 
             #########################################################
 
-            if (i + 1) % 10 == 0:
+            if (i + 1) % 1 == 0:
                 optimizer_g.zero_grad()
                 output = classifier(fake_images)
                 maxs = torch.max(output, 1)
@@ -157,15 +156,15 @@ if __name__ == '__main__':
 
                 loss_g.backward()
                 optimizer_g.step()
-                print(f'{loss_g.item()} \t{maxs.indices[0:10]}')
+                print(f'epoch #{epoch:>2d}:{loss_g.item()} \t{maxs.indices[0:10]}')
                 image = fake_images.detach().cpu().numpy()[0:10].reshape(28 * 10, 28)
                 plt.imshow(image, cmap=plt.get_cmap('RdBu'))
                 plt.pause(0.0001)
                 plt.cla()
                 torchvision.utils.save_image(fake_images.detach(), 'logs/fake_gan.png', normalize=True)
 
-            if (i + 1) % 99 == 0:
-                test_c(test_loader, classifier, device, 0)
+            # if (i + 1) % 99 == 0:
+                # test_c(test_loader, classifier, device, 0)
 
     torch.save(classifier.state_dict(), f'logs/mnist_classifier_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}.pth')
     torch.save(generator.state_dict(), f'logs/mnist_generator_{time.strftime("%Y%m%d_%H%M%S", time.localtime())}.pth')

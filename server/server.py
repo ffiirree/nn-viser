@@ -2,7 +2,7 @@ from flask import Flask
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
 import torch
-from tiny import MnistNetTiny
+from models import MnistNetTiny
 from PIL import Image
 import torchvision.transforms.functional as T
 import numpy as np

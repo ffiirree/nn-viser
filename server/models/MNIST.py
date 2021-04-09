@@ -83,14 +83,14 @@ class Generator(nn.Module):
             ConvBlock(ngf, ngf),
             nn.Conv2d(ngf, 1, kernel_size=3),
             # nn.ReLU(inplace=True),
-            nn.Tanh()
+            nn.Sigmoid()
             # state size : (batch_size, num_channels, 64, 64)
         )
 
     def forward(self, noise, labels):
         # x = torch.mul(self.embeds(labels), noise).reshape(noise.size()[0], noise.size()[1], 1, 1)
-        x = torch.add(self.embeds(labels), noise).reshape(noise.size()[0], noise.size()[1], 1, 1)
-        # x = self.embeds(labels).reshape(noise.size()[0], noise.size()[1], 1, 1)
+        # x = torch.add(self.embeds(labels), noise).reshape(noise.size()[0], noise.size()[1], 1, 1)
+        x = self.embeds(labels).reshape(noise.size()[0], noise.size()[1], 1, 1)
         return self.net(x)
 
 
