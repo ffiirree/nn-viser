@@ -1,0 +1,10 @@
+.vscode/
+__pycache__/
+data/
+*.pth
+logs/
+mnist/
+
+node_modules/
+package-lock.json
+dist/
