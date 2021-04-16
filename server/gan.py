@@ -96,7 +96,7 @@ if __name__ == '__main__':
         generator = nn.DataParallel(generator)
     generator.to(device)
 
-    optimizer_g = optim.SGD(generator.parameters(), lr=0.0002, momentum=0.9)
+    optimizer_g = optim.SGD(generator.parameters(), lr=0.00002, momentum=0.9)
     criterion_g = nn.CrossEntropyLoss()
 
     g_labels = torch.tensor([

@@ -12,35 +12,12 @@
             <el-button class="run-btn" size="small" type="primary" @click="click">RUN</el-button>
         </div>
         <div class="network">
-            <div class="group">
-                <div class="layer">
-                    <img :src="input"/>
+
+            <div class="group" v-for="(group, index) in feature_maps" :key="index">
+                <div class="layer" v-for="(value, name) in group" :key="name">
+                    <div class="name">{{name}}</div>
+                    <img :src="createURL(value)"/>
                 </div>
-            </div>
-            
-            <div class="group">
-                <div class="layer"><img :src="conv1"/></div>
-                <div class="layer"><img :src="relu1"/></div>
-            </div>
-
-            <div class="group">
-                <div class="layer"><img :src="conv2"/></div>
-                <div class="layer"><img :src="relu2"/></div>
-            </div>
-
-            <div class="group">
-                <div class="layer"><img :src="conv3"/></div>
-                <div class="layer"><img :src="relu3"/></div>
-            </div>
-
-            <div class="group">
-                <div class="layer"><img :src="conv4"/></div>
-                <div class="layer"><img :src="relu4"/></div>
-            </div>
-
-            <div class="group">
-                <div class="layer"><img :src="conv5"/></div>
-                <div class="layer"><img :src="relu5"/></div>
             </div>
         </div>
     </div>
@@ -50,17 +27,7 @@
 export default {
     data() {
         return {
-            input: null,
-            conv1: null,
-            relu1: null,
-            conv2: null,
-            relu2: null,
-            conv3: null,
-            relu3: null,
-            conv4: null,
-            relu4: null,
-            conv5: null,
-            relu5: null,
+            feature_maps: [],
             model: 'logs/mnist_tiny_11.pth',
             x: 'mnist/image_0.png',
         };
@@ -79,30 +46,17 @@ export default {
             console.log( 'from server:' + data)
         },
         net(data) {
-
-            this.input = window.URL.createObjectURL(new Blob([data.input]))
-
-            this.conv1 = window.URL.createObjectURL(new Blob([data.conv1]))
-            this.relu1 = window.URL.createObjectURL(new Blob([data.relu1]))
-
-            this.conv2 = window.URL.createObjectURL(new Blob([data.conv2]))
-            this.relu2 = window.URL.createObjectURL(new Blob([data.relu2]))
-
-            this.conv3 = window.URL.createObjectURL(new Blob([data.conv3]))
-            this.relu3 = window.URL.createObjectURL(new Blob([data.relu3]))
-
-            this.conv4 = window.URL.createObjectURL(new Blob([data.conv4]))
-            this.relu4 = window.URL.createObjectURL(new Blob([data.relu4]))
-
-            this.conv5 = window.URL.createObjectURL(new Blob([data.conv5]))
-            this.relu5 = window.URL.createObjectURL(new Blob([data.relu5]))
+            this.feature_maps = data
         }
     },
     methods: {
         click() {
             this.$socket.emit("predict", { model : this.model, input : this.x });
         },
-    },
+         createURL(v) {
+            return window.URL.createObjectURL(new Blob([v]))
+        }
+    }
 };
 </script>
 

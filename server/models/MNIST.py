@@ -63,27 +63,31 @@ class Generator(nn.Module):
             # input : (batch_size, nz, 1, 1)
             nn.ConvTranspose2d(nz, ngf * 4, kernel_size=4, stride=1, padding=0, bias=False),
             # ConvBlock(ngf * 4, ngf * 4, padding=1),
-            nn.ReLU(True),
+            nn.LeakyReLU(0.01, inplace=True),
             # state size : (batch_size, ngf * 8, 4, 4)
             nn.ConvTranspose2d(ngf * 4, ngf * 2, 4, 2, 1, bias=False),
             # ConvBlock(ngf * 2, ngf * 2, padding=1),
             # nn.BatchNorm2d(opt.ngf * 2),
-            nn.ReLU(True),
+            nn.LeakyReLU(0.01, inplace=True),
             # state size : (batch_size, ngf * 4, 8, 8)
             nn.ConvTranspose2d(ngf * 2, ngf, 4, 2, 1, bias=False),
             # ConvBlock(ngf, ngf, padding=1),
-            nn.ReLU(True),
+            nn.LeakyReLU(0.01, inplace=True),
             # state size: (batch_size, ngf * 2, 16, 16)
             # nn.ConvTranspose2d(opt.ngf * 2, opt.ngf, 4, 2, 1, bias=False),
             # nn.BatchNorm2d(opt.ngf),
             # nn.ReLU(True),
             # state size : (batch_size, ngf, 32, 32)
             nn.ConvTranspose2d(ngf, ngf, 4, 2, bias=False),
-            ConvBlock(ngf, ngf),
-            ConvBlock(ngf, ngf),
+            nn.Conv2d(ngf, ngf, 3),
+            nn.LeakyReLU(0.01, inplace=True),
+            # nn.BatchNorm2d(ngf),
+            nn.Conv2d(ngf, ngf, 3),
+            nn.LeakyReLU(0.01, inplace=True),
+            # nn.BatchNorm2d(ngf),
             nn.Conv2d(ngf, 1, kernel_size=3),
             # nn.ReLU(inplace=True),
-            nn.Sigmoid()
+            nn.Tanh()
             # state size : (batch_size, num_channels, 64, 64)
         )
 
