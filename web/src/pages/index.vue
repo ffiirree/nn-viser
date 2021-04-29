@@ -13,10 +13,10 @@
         </div>
         <div class="network">
 
-            <div class="group" v-for="(group, index) in feature_maps" :key="index">
-                <div class="layer" v-for="(value, name) in group" :key="name">
+            <div class="unit" v-for="(unit, index) in activations.units" :key="index">
+                <div class="layer" v-for="(value, name) in unit.layers" :key="name">
                     <div class="name">{{name}}</div>
-                    <img :src="createURL(value)"/>
+                    <img :src="value.path" crossorigin='anonymous'/>
                 </div>
             </div>
         </div>
@@ -27,7 +27,7 @@
 export default {
     data() {
         return {
-            feature_maps: [],
+            activations: [],
             model: 'logs/mnist_tiny_11.pth',
             x: 'mnist/image_0.png',
         };
@@ -46,16 +46,13 @@ export default {
             console.log( 'from server:' + data)
         },
         net(data) {
-            this.feature_maps = data
+            this.activations = data
         }
     },
     methods: {
         click() {
             this.$socket.emit("predict", { model : this.model, input : this.x });
         },
-         createURL(v) {
-            return window.URL.createObjectURL(new Blob([v]))
-        }
     }
 };
 </script>
