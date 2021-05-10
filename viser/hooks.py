@@ -5,35 +5,70 @@ import torch
 from torch import nn
 import torchvision
 
-__all__ = ['LayerForwardHook', 'LayerBackwardHook', 'ActivationsHook', 'FiltersHook']
+__all__ = ['LayerHook', 'LayerForwardHook', 'LayerBackwardHook', 'ActivationsHook', 'FiltersHook']
+
+class LayerHook:
+    def __init__(
+        self,
+        model: nn.Module,
+        types:tuple=(nn.ReLU),
+        forward_op=None,
+        backward_op=None
+    ) -> None:
+        self.model = model
+        self.types = types
+        self.layers = []
+        self.activations = []
+        self.gradients = []
+        self.forward_op = forward_op
+        self.backward_op = backward_op
+
+        for layer in self.model.modules():
+            if isinstance(layer, self.types):
+                layer.register_forward_hook(self.forward_hook)
+                layer.register_backward_hook(self.backward_hook)
+                self.layers.append(layer)
+
+    def forward_hook(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor):
+        self.activations.append(output)
+        if callable(self.forward_op):
+            return self.forward_op(module, input, output)
+    
+    def backward_hook(self, module: nn.Module, grad_input: torch.Tensor, grad_output: torch.Tensor):
+        self.gradients.append(grad_input[0])
+        if callable(self.backward_op):
+            return self.backward_op(module, grad_input, grad_output, self.activations)
 
 class LayerForwardHook:
     def __init__(
         self,
         model: nn.Module,
-        layer_index: int,
-        types:tuple=(nn.Conv2d, nn.ReLU, nn.MaxPool2d, nn.Linear, nn.AdaptiveAvgPool2d)
+        layer_index: int = 0,
     ) -> None:
         self.model = model
-        self.index = 0
-        self.types = types
         self.layer = None
+        self.layer_name = None
+        self.layer_index = layer_index
         self.filters = None
+        self.activations = None
 
-        for layer in self.model.modules():
-            if isinstance(layer, self.types):
-                if layer_index == self.index:
+        index = 0
+        for name, layer in self.model.named_modules():
+            if not isinstance(layer, (nn.Sequential, type(self.model))):
+                if self.layer_index == index:
                     self.layer = layer
+                    self.layer_name = name
                     layer.register_forward_hook(self)
                     break
 
-                self.index += 1
+                index += 1
+                
+        assert index == layer_index, ""
 
     def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor) -> None:
         if isinstance(module, nn.Conv2d):
-            self.filters = module.weight.detach()
+            self.filters = module.weight
         self.activations = output
-        self.gradients = input
 
     def __str__(self) -> str:
         return { 'filters' : self.filters.shape, 'activations' : self.activations.shape }
@@ -41,8 +76,8 @@ class LayerForwardHook:
 class LayerBackwardHook:
     def __init__(
         self,
-        model: nn.Module,
-        layer_index: int,
+        model:nn.Module,
+        layer_index:int=0,
         types:tuple=(nn.Conv2d, nn.ReLU, nn.MaxPool2d, nn.Linear, nn.AdaptiveAvgPool2d)
     ) -> None:
         self.model = model

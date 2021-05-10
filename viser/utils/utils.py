@@ -1,8 +1,12 @@
 import numpy as np
 import random
-import torch    
+import torch
+import torchvision.transforms.functional as TF
+import viser.utils
 
-def manual_seed(seed:int=0):
+__all__ = ['manual_seed', 'save_image']
+
+def manual_seed(seed: int = 0):
     r"""
         https://pytorch.org/docs/stable/notes/randomness.html
         https://discuss.pytorch.org/t/random-seed-initialization/7854/20
@@ -20,3 +24,7 @@ def manual_seed(seed:int=0):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
+    
+def save_image(tensor: torch.Tensor, filename: str, normalize: bool = True) -> None:
+    image = TF.to_pil_image(viser.utils.normalize(tensor) if normalize else tensor)
+    image.save(filename)

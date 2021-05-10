@@ -12,6 +12,7 @@ if __name__ == '__main__':
     device = torch.device('cuda')
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model',          type=str,   default='alexnet')
     parser.add_argument('--target-class',   type=int,   default=130)
     parser.add_argument('--epochs',         type=int,   default=225)
     parser.add_argument('--lr',             type=float, default=3)
@@ -27,7 +28,13 @@ if __name__ == '__main__':
 
     manual_seed(0)
 
-    model = torchvision.models.alexnet(pretrained=True)
+    if args.model == 'vgg19':
+        model = torchvision.models.vgg19(pretrained=True)
+    elif args.model == 'alexnet':
+        model = torchvision.models.alexnet(pretrained=True)
+    else:
+        raise ValueError()
+        
     model.to(device)
     model.eval()
 
@@ -50,4 +57,4 @@ if __name__ == '__main__':
 
         optimizer.step()
 
-        torchvision.utils.save_image(denormalize(x.detach(), mean, std, clamp=args.clamp), f'{args.output_dir}/generate_class_{args.target_class}_blur.png', normalize=True)
+        torchvision.utils.save_image(denormalize(x.detach(), mean, std, clamp=args.clamp), f'{args.output_dir}/class_max_{args.model}_{args.target_class}_blur.png', normalize=True)
