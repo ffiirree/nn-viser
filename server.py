@@ -1,3 +1,4 @@
+from viser.attrs.smooth_grad import SmoothGrad
 from flask import Flask, url_for,render_template
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
@@ -194,7 +195,7 @@ def handle_saliency(data):
     attributions = saliency.attribute(x, target, abs=False).squeeze(0)
     
     guided_saliency = GuidedSaliency(model)
-    guided_attributions = guided_saliency.attribute(x, target, abs=False).squeeze(0)
+    guided_attributions = guided_saliency.attribute(x, targetabs=False).squeeze(0)
 
     emit('response_saliecy', {
         'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
@@ -203,6 +204,21 @@ def handle_saliency(data):
         'guided_colorful' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
         'guided_grayscale' : save_image(torch.sum(torch.abs(guided_attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
         'guided_grad_x_image' :save_image(torch.sum(torch.abs(guided_attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    })
+    
+@socketio.on('smooth_grad')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    target = int(data['target'])
+
+    smoothgrad = SmoothGrad(model)
+    attributions = smoothgrad.attribute(x, target, epochs=int(data['epochs']), abs=False).squeeze(0)
+
+    emit('response_smooth_grad', {
+        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
     })
     
 @socketio.on('gradcam')

@@ -43,9 +43,14 @@
                     },
                     {
                         icon: 'fire',
+                        index: '/smooth_grad',
+                        title: 'SmoothGrad'
+                    },
+                    {
+                        icon: 'fire',
                         index: '/gradcam',
                         title: 'GradCam'
-                    },
+                    }
                 ],
             }
         },

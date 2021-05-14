@@ -40,7 +40,12 @@ export const routes = [
             {
                 path: '/saliency',
                 component: () => import('../pages/saliency'),
-                meta: { title: 'Saliency' }
+                meta: { title: 'Saliency Map' }
+            },
+            {
+                path: '/smooth_grad',
+                component: () => import('../pages/smooth_grad'),
+                meta: { title: 'SmoothGrad' }
             },
             {
                 path: '/gradcam',
