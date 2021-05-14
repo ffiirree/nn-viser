@@ -1,5 +1,6 @@
 import os
 import json
+from viser.utils.utils import save_image
 import warnings
 import torch
 from torch import nn
@@ -104,14 +105,12 @@ class ActivationsHook:
     def __init__(
         self,
         model:nn.Module,
-        types:tuple=(nn.Conv2d, nn.ReLU, nn.MaxPool2d, nn.Linear, nn.AdaptiveAvgPool2d),
         split_types:tuple=(nn.Conv2d, nn.Linear, nn.AdaptiveAvgPool2d),
         stop_types:tuple=None,
     ) -> None:
         self.model = model
         self.activations = []
         self.index = 0
-        self.types = types
         self.split_types = split_types
         self.stop_types = stop_types
 
@@ -122,7 +121,7 @@ class ActivationsHook:
             if self.stop_types and isinstance(layer, self.stop_types):
                 break
 
-            if isinstance(layer, self.types):
+            if not isinstance(layer, (nn.Sequential, type(self.model))):
                 layer.register_forward_hook(self)
 
     def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor):
@@ -143,8 +142,10 @@ class ActivationsHook:
             self.activations[self.index][f'relu_{self.index}'] = output.detach().clone()
         elif isinstance(module, nn.MaxPool2d):
             self.activations[self.index][f'max_pool2d_{self.index}'] = output.detach().clone()
+        elif isinstance(module, nn.Dropout):
+            pass
         else:
-            raise ValueError
+            raise ValueError(self.index, type(module))
 
     def clear(self):
         self.activations.clear()
@@ -238,6 +239,24 @@ class FiltersHook:
         for layer in model.modules():
             if isinstance(layer, (nn.Conv2d)):
                 layer.register_forward_hook(self)
+                
+    def save(self, dir:str):
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+            
+        res = []
+        for i, (name, filters) in enumerate(self.filters):
+            res.append({ 'name': name, "filters": []})
+            for idx, filter in enumerate(filters):
+                filename = f"{dir}/{name}_{idx}.png"
+                if filter.shape[0] == 3:
+                    torchvision.utils.save_image(filter, filename, nrow=1, normalize=True)
+                else:
+                    filter = filter.unsqueeze(1)
+                    torchvision.utils.save_image(filter, filename, nrow=1, normalize=True)
+                res[i]['filters'].append(filename)
+        
+        return res
 
     def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor):
         self.index = len(self.filters)

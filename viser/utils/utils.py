@@ -3,6 +3,7 @@ import random
 import torch
 import torchvision.transforms.functional as TF
 import viser.utils
+import os
 
 __all__ = ['manual_seed', 'save_image']
 
@@ -26,5 +27,10 @@ def manual_seed(seed: int = 0):
     torch.backends.cudnn.enabled = False
     
 def save_image(tensor: torch.Tensor, filename: str, normalize: bool = True) -> None:
+    dir = os.path.dirname(filename)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
     image = TF.to_pil_image(viser.utils.normalize(tensor) if normalize else tensor)
     image.save(filename)
+    
+    return filename

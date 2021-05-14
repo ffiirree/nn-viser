@@ -8,4 +8,5 @@ mnist/
 node_modules/
 package-lock.json
 dist/
-static/
+static/web
+out

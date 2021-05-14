@@ -1,5 +1,5 @@
 {
-  "name": "visualization",
+  "name": "viser",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,10 +9,12 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "core-js": "^3.6.5",
+    "core-js": "^3.12.1",
     "element-ui": "^2.15.1",
+    "lato-font": "^3.0.0",
     "socket.io": "^3.1.2",
-    "vue": "^2.6.11",
+    "vue": "^2.6.12",
+    "vue-awesome": "^4.1.0",
     "vue-axios": "^3.2.4",
     "vue-router": "^3.5.1",
     "vue-socket.io": "^3.0.10"

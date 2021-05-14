@@ -8,6 +8,7 @@
 * {
     padding: 0;
     margin: 0;
+    font-family: Lato, sans-serif;
 }
 
 html, body, #app {

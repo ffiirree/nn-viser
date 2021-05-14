@@ -1,88 +1,249 @@
-from flask import Flask
+from flask import Flask, url_for,render_template
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
 import torch
 from torch import nn
 import torchvision
 from PIL import Image
-import torchvision.transforms as T
 import numpy as np
-import io
-import torch.nn.functional as F
-import matplotlib.pyplot as plt
-from visor import ActivationsHook
+from viser import ActivationsHook, FiltersHook, LayerForwardHook
+from viser.attrs import Saliency, GradCAM, GuidedSaliency
+from viser.utils import save_image, normalize, denormalize, manual_seed
+import torchvision.transforms.functional as TF
+import time
+import matplotlib.cm as cm
 
-cmap = plt.get_cmap('RdBu')
+STATIC_FOLDER = 'static'
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=STATIC_FOLDER, template_folder='static/web')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-def norm_ip(img, low, high):
-    img.clamp_(min=low, max=high)
-    img.sub_(low).div_(max(high - low, 1e-5))
+@app.route("/")
+def hello_world():
+    return render_template('index.html')
 
-def to_bwr(ts):
-    assert ts[0].dim() == 2, f"dim must be 2, but is {ts[0].dim()} / {ts[0].shape}"
+def get_model(model_name: str):
+    if model_name == 'vgg16':
+        return torchvision.models.vgg16(pretrained=True)
+    elif model_name == 'vgg19':
+        return torchvision.models.vgg19(pretrained=True)
+    else: 
+        return torchvision.models.alexnet(pretrained=True)
+    
+def get_input(filename: str):
+    mean = [0.485, 0.456, 0.406]
+    std  = [0.229, 0.224, 0.225]
 
-    low = min([l.min().item() for l in ts])
-    high = max([ h.max().item() for h in ts])
+    image = Image.open(filename).convert('RGB')
+    return TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0), image
 
-    images = []
-    for t in ts:
-        image = torch.zeros([3, t.shape[0], t.shape[1]])
-        norm_ip(t, low, high)
-        tensor = t.mul(255).clamp_(0, 255).type(torch.uint8)
+@socketio.on('get_layers')
+def model_layers(data):
+    model = get_model(data['model'])
+    layers = []
+    for name, layer in model.named_modules():
+        if not isinstance(layer, (nn.Sequential, type(model))):
+            layers.append({ 'name' : name, 'layer': str(layer) })
+            
+    emit('layers', layers)
+            
+@socketio.on('activations')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    
+    activations_hook = ActivationsHook(model, stop_types=nn.Linear)
 
-        for i in range(tensor.shape[0]):
-            for j in range(tensor.shape[1]):
-                color = cmap(tensor[i][j].item())
-                
-                image[0][i][j] = color[0] * 255
-                image[1][i][j] = color[1] * 255
-                image[2][i][j] = color[2] * 255
-        images.append(image)
-    return images
+    model(x)
 
-def tensor_to_bwr_file(t):
-    print(t.shape)
-    image = t.permute(1, 2, 0).cpu().detach().numpy()
-    image = Image.fromarray(image.astype(np.uint8))
-    file = io.BytesIO()
-    image.save(file, 'PNG')
-    file.seek(0)
-    return file
+    emit('response_activations', activations_hook.save(f'static/out/alexnet_{time.time()}', normalization_scope='unit', split_channels=True))
 
-def feature_maps_to_bwr(feature_maps):
-    return [{ name: tensor_to_bwr_file(to_bwr([t.view([-1, t.shape[2]])])[0]).read() for name, t in group} for group in feature_maps]
+@socketio.on('filters')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    
+    filters_hook = FiltersHook(model)
 
-@socketio.on('predict')
-def predict(data):
-    assert torch.cuda.is_available(), 'CUDA IS NOT AVAILABLE!!'
-    device = torch.device('cuda')
+    model(x)
 
-    model = torchvision.models.alexnet(pretrained=True)
+    emit('response_filters', filters_hook.save(f'static/out/{data["model"]}_{time.time()}'))
+
+@socketio.on('deep_dream')
+def handle_saliency(data):    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(device)
+
+    model = get_model(data['model'])
     model.to(device)
-    hook = ActivationsHook(model, stop_types=nn.Linear)
-
-    # model = MnistNetTiny(11)
-    # model.load_state_dict(torch.load(data['model']))
-    # model.to(device=device)
-
-    transform = T.Compose([
-        T.ToTensor(),
-        T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
-
-    image = transform(Image.open('cat_dog.png')).unsqueeze(0).to(device)
-
-    # hook = FeatureMapsHook(model)
-    model(image)
-
-    # feature_maps = feature_maps_to_bwr(hook.feature_maps)
+    model.eval()
     
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
     
-    emit('net', hook.save('static/alexnet', split_channels=False))
+    hook = LayerForwardHook(model, int(data['layer']))
+    
+    image = Image.open(data['input'])
+    x = TF.normalize(TF.resize(TF.to_tensor(image), [224, 224]), mean, std).to(device).unsqueeze(0).requires_grad_(True)
+    
+    optimizer = torch.optim.SGD([x], lr=float(data['lr']), weight_decay=1e-4)
+    
+    for i in range(int(data['epochs'])):
+        optimizer.zero_grad()
+        model(x)
+        loss = -torch.mean(hook.activations[0, int(data['activation'])])
+        loss.backward()
+        optimizer.step()
+        
+        filename = f'static/out/deep_dream_{i}.png'
+        torchvision.utils.save_image(denormalize(x.detach(), mean, std, clamp=bool(data['clamp'])), filename, normalize=True)
+
+        emit('response_deep_dream', {
+            'epoch' : i,
+            'loss' : loss.item(),
+            'output': filename
+        })
+
+@socketio.on('class_max')
+def handle_saliency(data):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    manual_seed(0)
+    
+    model = get_model(data['model'])
+    model.to(device)
+    model.eval()
+    
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    
+    x = torch.randint(0, 255, [1, 3, 224, 224]) / 255
+    x = TF.normalize(x, mean, std).to(device).requires_grad_(True)
+    
+    optimizer = torch.optim.SGD([x], lr=int(data['lr']), weight_decay=float(data['weight_decay']))
+    
+    for i in range(int(data['epochs'])):
+        if bool(data['blur']) and i % int(data['blur_freq']) == 0:
+            x.data = TF.gaussian_blur(x.data, [3, 3])
+        
+        optimizer.zero_grad()
+        output = model(x)
+        loss = -output[0, 130]
+        loss.backward()
+        
+        if bool(data['clip_grad']):
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+        
+        optimizer.step()
+        
+        filename = f'static/out/class_max_{i}.png'
+        torchvision.utils.save_image(denormalize(x.detach(), mean, std, clamp=bool(data['clamp'])), filename, normalize=True)
+
+        emit('response_class_max', {
+            'epoch' : i,
+            'loss' : loss.item(),
+            'output': filename
+        })
+
+
+@socketio.on('act_max')
+def handle_saliency(data):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    manual_seed(0)
+    
+    model = get_model(data['model'])
+    model.to(device)
+    model.eval()
+    
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    
+    hook = LayerForwardHook(model, int(data['layer']))
+    
+    x = torch.randint(150, 180, [1, 3, 224, 224]) / 255
+    x = TF.normalize(x, mean, std).to(device).requires_grad_(True)
+    
+    optimizer = torch.optim.Adam([x], lr=float(data['lr']), weight_decay=1e-6)
+    
+    for i in range(int(data['epochs'])):        
+        optimizer.zero_grad()
+        model(x)
+        loss = -torch.mean(hook.activations[0, int(data['activation'])])
+        loss.backward()    
+        optimizer.step()
+        
+        filename = f'static/out/act_max_{i}.png'
+        torchvision.utils.save_image(denormalize(x.detach(), mean, std, clamp=bool(data['clamp'])), filename, normalize=True)
+
+        emit('response_act_max', {
+            'epoch' : i,
+            'loss' : loss.item(),
+            'output': filename
+        })
+
+    
+@socketio.on('saliency')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    target = int(data['target'])
+
+    saliency = Saliency(model)
+    attributions = saliency.attribute(x, target, abs=False).squeeze(0)
+    
+    guided_saliency = GuidedSaliency(model)
+    guided_attributions = guided_saliency.attribute(x, target, abs=False).squeeze(0)
+
+    emit('response_saliecy', {
+        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png'),
+        'guided_colorful' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'guided_grayscale' : save_image(torch.sum(torch.abs(guided_attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'guided_grad_x_image' :save_image(torch.sum(torch.abs(guided_attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    })
+    
+@socketio.on('gradcam')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, image = get_input(data['input'])
+    target = int(data['target'])
+
+    gradcam = GradCAM(model, int(data['layer']))
+    activations = gradcam.attribute(x, target).squeeze(0)
+    
+    saliency = GuidedSaliency(model)
+    attributions = saliency.attribute(x, target, abs=False).squeeze(0)
+    
+    cam = normalize(activations)
+
+    grad_cam = TF.to_pil_image(cam).resize([x.shape[2], x.shape[3]], resample=Image.ANTIALIAS)
+    grayscale_filename = f'static/out/heatmap_grayscale_{time.time()}.png'
+    grad_cam.save(grayscale_filename)
+
+    cmap = cm.get_cmap('hsv')
+    heatmap = cmap(TF.to_tensor(grad_cam)[0].detach().numpy())
+    colorful_filename = f'static/out/heatmap_{time.time()}.png'
+    Image.fromarray((heatmap * 255).astype(np.uint8)).save(colorful_filename)
+
+    heatmap[:, :, 3] = 0.4
+
+    heatmap_on_image = Image.new('RGBA', (x.shape[2], x.shape[3]))
+    heatmap_on_image = Image.alpha_composite(heatmap_on_image, image.convert('RGBA'))
+    heatmap_on_image = Image.alpha_composite(heatmap_on_image, Image.fromarray((heatmap * 255).astype(np.uint8)))
+    on_image_filename = f'static/out/heatmap_on_image_{time.time()}.png'
+    heatmap_on_image.save(on_image_filename)
+    
+    # Vanilla gradients
+    emit('response_gradcam', {
+        'grayscale' : grayscale_filename,
+        'colorful' : colorful_filename,
+        'on_image' : on_image_filename,
+        'guided_saliecy': save_image(attributions, f'static/out/guided_saliency_{time.time()}.png'),
+        'guided_grad_cam': save_image(TF.to_tensor(grad_cam) * attributions, f'static/out/guided_gradcam_{time.time()}.png')
+    })
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

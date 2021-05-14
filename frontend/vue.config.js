@@ -1,11 +1,14 @@
 module.exports = {
+    publicPath: process.env.NODE_ENV === 'production' ? '/static/web' : '',
+    outputDir: '../static/web',
+    assetsDir: '',
     productionSourceMap: false,
     devServer: {
-        port: 8080,
+        port: 8083,
         disableHostCheck: true,
         proxy: {
             '/api': {
-                target: 'http://localhost/5000',
+                target: 'http://localhost:5000',
                 pathRewrite: { '^/api': '' },
                 ws: true,
                 changeOrigin: true,
