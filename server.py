@@ -195,7 +195,7 @@ def handle_saliency(data):
     attributions = saliency.attribute(x, target, abs=False).squeeze(0)
     
     guided_saliency = GuidedSaliency(model)
-    guided_attributions = guided_saliency.attribute(x, targetabs=False).squeeze(0)
+    guided_attributions = guided_saliency.attribute(x, target, abs=False).squeeze(0)
 
     emit('response_saliecy', {
         'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
