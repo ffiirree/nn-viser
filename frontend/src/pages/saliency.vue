@@ -4,8 +4,7 @@
             <div class="item">
                 <div class="title">model</div>
                 <el-select class="value" size="small" v-model="params.model" @change="update">
-                    <el-option value='alexnet'/>
-                    <el-option value='vgg19'/>
+                    <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
                 </div>
             <div class="item">
@@ -39,6 +38,7 @@ export default {
     name: 'saliency',
     data() {
         return {
+            models: [],
             activations: [],
             params: {
                 model: 'alexnet',
@@ -49,15 +49,22 @@ export default {
         };
     },
     created() {
+        this.config()
         this.update()
     },
     sockets: {
         response_saliecy(data) {
-            console.log(data)
             this.res = data
+        },
+
+        models(data) {
+            this.models = data
         }
     },
     methods: {
+        config() {
+            this.$socket.emit('get_models')
+        },
         update() {
             this.$socket.emit("saliency", this.params);
         }

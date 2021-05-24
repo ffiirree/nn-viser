@@ -4,8 +4,7 @@
             <div class="item">
                 <div class="title">model</div>
                 <el-select class='value' size="small" v-model="params.model" @change="update">
-                    <el-option value='alexnet'/>
-                    <el-option value='vgg19'/>
+                    <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
             <div class="item"><div class="title">target</div><el-input class='value' type='number' size="small" v-model="params.target"  @change="update"/></div>
@@ -30,6 +29,7 @@
 export default {
     data() {
         return {
+            models: [],
             res: {},
             params: {
                 model: 'alexnet',
@@ -45,14 +45,21 @@ export default {
         };
     },
     created() {
+        this.config()
         this.update()
     },
     sockets: {
+        models(data) {
+            this.models = data
+        },
         response_class_max(data) {
             this.res = data
         }
     },
     methods: {
+        config() {
+            this.$socket.emit('get_models')
+        },
         update() {
             this.$socket.emit("class_max", this.params);
         },

@@ -4,9 +4,7 @@
             <div class="item">
                 <div class="title">model</div>
                 <el-select class='value' size="small" v-model="params.model" @change="getLayers">
-                    <el-option value='alexnet'/>
-                    <el-option value='vgg16'/>
-                    <el-option value='vgg19'/>
+                    <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
             <div class="item">
@@ -33,6 +31,7 @@
 export default {
     data() {
         return {
+            models: [],
             layers: {},
             res: {},
             params: {
@@ -46,10 +45,13 @@ export default {
         };
     },
     created() {
-        this.getLayers()
+        this.config()
         this.update()
     },
     sockets: {
+        models(data) {
+            this.models = data
+        },
         layers(data) {
             this.layers = data
         },
@@ -58,6 +60,10 @@ export default {
         }
     },
     methods: {
+        config() {
+            this.$socket.emit('get_models')
+            this.getLayers()
+        },
         getLayers() {
             this.$socket.emit('get_layers', { model: this.params.model })
         },

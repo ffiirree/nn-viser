@@ -4,13 +4,12 @@
             <div class="item">
                 <div class="title">model</div>
                 <el-select class="value" size="small" v-model="params.model" @change="getLayers">
-                    <el-option value='alexnet'/>
-                    <el-option value='vgg19'/>
+                    <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
                 </div>
             <div class="item">
                 <div class="title">input</div>
-                <el-select class="value" size="small" v-model="params.input" @change="update">
+                <el-select class="value" size="small" v-model="params.input" @change="config">
                     <el-option value='static/images/cat_dog.png'/>
                     <el-option value='static/images/spider.png'/>
                     <el-option value='static/images/snake.jpg'/>
@@ -19,7 +18,7 @@
             <div class="item">
                 <div class="title">layer</div>
                 <el-select class="value" size="small" v-model="params.layer" @change="update">
-                    <el-option v-for="(layer, index) in layers" :value="index" :key="index">{{index}} - {{layer.name}}/{{layer.layer}}</el-option>
+                    <el-option v-for="layer in layers" :value="layer.index" :key="layer.index">{{layer.index}} - {{layer.name}} / {{layer.layer}}</el-option>
                 </el-select>
             </div>
             <div class="item"><div class="title">target</div><el-input class="value" size="small" v-model="params.target"  @change="update"/></div>
@@ -44,6 +43,7 @@ export default {
     name: 'saliency',
     data() {
         return {
+            models: [],
             params: {
                 model: 'alexnet',
                 input: 'static/images/cat_dog.png',
@@ -55,10 +55,13 @@ export default {
         };
     },
     created() {
-        this.getLayers()
+        this.config()
         this.update()
     },
     sockets: {
+        models(data) {
+            this.models = data
+        },
         layers(data) {
             this.layers = data
         },
@@ -67,6 +70,11 @@ export default {
         }
     },
     methods: {
+        config() {
+            this.$socket.emit('get_models')
+            this.getLayers()
+            this.update()
+        },
         getLayers() {
             this.$socket.emit('get_layers', { model: this.params.model })
         },

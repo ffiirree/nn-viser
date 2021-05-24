@@ -3,14 +3,13 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="model" @change="update">
-                    <el-option value='alexnet'/>
-                    <el-option value='vgg19'/>
+                <el-select class="value" size="small" v-model="params.model" @change="update">
+                    <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
             <div class="item">
                 <div class="title">input</div>
-                <el-select class="value" size="small" v-model="x" @change="update">
+                <el-select class="value" size="small" v-model="params.input" @change="update">
                     <el-option value='static/images/cat_dog.png'/>
                     <el-option value='static/images/spider.png'/>
                     <el-option value='static/images/snake.jpg'/>
@@ -21,7 +20,7 @@
             <div class="unit">
                 <div class="layer">
                     <div class="name">input</div>
-                    <img :src="x" crossorigin='anonymous'/>
+                    <img :src="params.input" crossorigin='anonymous'/>
                 </div>
             </div>
             <div class="unit" v-for="(unit, index) in res.units" :key="index">
@@ -40,15 +39,22 @@
 export default {
     data() {
         return {
+            models: [],
             res: [],
-            model: 'alexnet',
-            x: 'static/images/cat_dog.png',
+            params: {
+                model: 'alexnet',
+                input: 'static/images/cat_dog.png',
+            }
         };
     },
     created() {
+        this.config()
         this.update()
     },
     sockets: {
+        models(data) {
+            this.models = data
+        },
         response_activations(data) {
             console.log(data)
             this.res = data
@@ -56,8 +62,11 @@ export default {
         }
     },
     methods: {
+        config() {
+            this.$socket.emit("get_models")
+        },
         update() {
-            this.$socket.emit("activations", { model : this.model, input : this.x });
+            this.$socket.emit("activations", this.params);
         },
     }
 };

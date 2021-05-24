@@ -1,3 +1,5 @@
+from viser.utils.utils import named_layers
+from torchvision.models.inception import BasicConv2d
 from viser.attrs.smooth_grad import SmoothGrad
 from flask import Flask, url_for,render_template
 from flask_socketio import SocketIO, emit, send
@@ -9,7 +11,7 @@ from PIL import Image
 import numpy as np
 from viser import ActivationsHook, FiltersHook, LayerForwardHook
 from viser.attrs import Saliency, GradCAM, GuidedSaliency
-from viser.utils import save_image, normalize, denormalize, manual_seed
+from viser.utils import *
 import torchvision.transforms.functional as TF
 import time
 import matplotlib.cm as cm
@@ -23,14 +25,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 @app.route("/")
 def hello_world():
     return render_template('index.html')
-
-def get_model(model_name: str):
-    if model_name == 'vgg16':
-        return torchvision.models.vgg16(pretrained=True)
-    elif model_name == 'vgg19':
-        return torchvision.models.vgg19(pretrained=True)
-    else: 
-        return torchvision.models.alexnet(pretrained=True)
     
 def get_input(filename: str):
     mean = [0.485, 0.456, 0.406]
@@ -39,13 +33,16 @@ def get_input(filename: str):
     image = Image.open(filename).convert('RGB')
     return TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0), image
 
+@socketio.on('get_models')
+def get_models():
+    emit('models', torch_models())
+
 @socketio.on('get_layers')
 def model_layers(data):
     model = get_model(data['model'])
     layers = []
-    for name, layer in model.named_modules():
-        if not isinstance(layer, (nn.Sequential, type(model))):
-            layers.append({ 'name' : name, 'layer': str(layer) })
+    for index, (name, layer) in enumerate(named_layers(model)):
+        layers.append({ 'index': index, 'name' : name, 'layer': str(layer) })
             
     emit('layers', layers)
             
