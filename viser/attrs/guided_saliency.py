@@ -39,7 +39,7 @@ class GuidedSaliency:
             input.grad.zero_()
 
         output = self.model(input)
-        loss = output[0, target] if target else output.max()
+        loss = output[0, target] if target and target < output.shape[1] else output.max()
         
         grad = torch.autograd.grad(loss, input)[0]
         

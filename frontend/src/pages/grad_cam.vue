@@ -21,7 +21,7 @@
                     <el-option v-for="layer in layers" :value="layer.index" :key="layer.index">{{layer.index}} - {{layer.name}} / {{layer.layer}}</el-option>
                 </el-select>
             </div>
-            <div class="item"><div class="title">target</div><el-input class="value" size="small" v-model="params.target"  @change="update"/></div>
+            <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
         </div>
         <div class="network">
             <div class="input"><img :src="params.input" crossorigin='anonymous'/></div>

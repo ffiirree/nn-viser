@@ -10,9 +10,9 @@
             <div class="item">
                 <div class="title">input</div>
                 <el-select class="value" size="small" v-model="params.input" @change="update">
-                    <el-option value='images/cat_dog.png'/>
-                    <el-option value='images/spider.png'/>
-                    <el-option value='images/dd_tree.jpg'/>
+                    <el-option value='static/images/cat_dog.png'/>
+                    <el-option value='static/images/spider.png'/>
+                    <el-option value='static/images/dd_tree.jpg'/>
                 </el-select>
             </div>
             <div class="item">
@@ -43,7 +43,7 @@ export default {
             res: {},
             params: {
                 model: 'vgg19',
-                input: 'images/dd_tree.jpg',
+                input: 'static/images/dd_tree.jpg',
                 layer: 34,
                 activation: 94,
                 epochs: 251,

@@ -71,7 +71,6 @@ def handle_saliency(data):
 @socketio.on('deep_dream')
 def handle_saliency(data):    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(device)
 
     model = get_model(data['model'])
     model.to(device)
