@@ -1,6 +1,6 @@
 import os
 import json
-from viser.utils.utils import save_image
+from viser.utils.utils import * 
 import warnings
 import torch
 from torch import nn
@@ -52,19 +52,9 @@ class LayerForwardHook:
         self.layer_index = layer_index
         self.filters = None
         self.activations = None
-
-        index = 0
-        for name, layer in self.model.named_modules():
-            if not isinstance(layer, (nn.Sequential, type(self.model))):
-                if self.layer_index == index:
-                    self.layer = layer
-                    self.layer_name = name
-                    layer.register_forward_hook(self)
-                    break
-
-                index += 1
-                
-        assert index == layer_index, ""
+        
+        self.layer_name, self.layer = list(named_layers(self.model))[self.layer_index]
+        self.layer.register_forward_hook(self)
 
     def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor) -> None:
         if isinstance(module, nn.Conv2d):

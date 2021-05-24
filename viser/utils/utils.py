@@ -7,7 +7,7 @@ import viser.utils
 import os
 import torchvision.models as models
 
-__all__ = ['manual_seed', 'save_image', 'torch_models', 'get_model']
+__all__ = ['manual_seed', 'save_image', 'named_layers', 'torch_models', 'get_model']
 
 def manual_seed(seed: int = 0):
     r"""
