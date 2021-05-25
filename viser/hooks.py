@@ -6,9 +6,36 @@ import torch
 from torch import nn
 import torchvision
 
-__all__ = ['LayerHook', 'LayerForwardHook', 'LayerBackwardHook', 'ActivationsHook', 'FiltersHook']
+__all__ = ['LayerHook', 'LayersHook', 'ActivationsHook', 'FiltersHook']
 
 class LayerHook:
+    def __init__(self,
+                 model: nn.Module,
+                 index: int = 0) -> None:
+        self.model = model
+        self.index = index
+        self.layer = None
+        self.layer_name = None
+        self.filters = None
+        self.activations = None
+        self.gradients = None
+        
+        self.layer_name, self.layer = list(named_layers(self.model))[self.index]
+        self.layer.register_forward_hook(self.forward_hook)
+        self.layer.register_backward_hook(self.backward_hook)
+    
+    def forward_hook(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor):
+        if isinstance(module, nn.Conv2d):
+            self.filters = module.weight
+        self.activations = output
+        
+    def backward_hook(self, module: nn.Module, grad_input: torch.Tensor, grad_output: torch.Tensor):
+        self.gradients = grad_input[0]
+        
+    def __str__(self) -> str:
+        return f'LayerHook(name: {self.layer_name}, index: {self.index}, layer: {self.layer})'
+    
+class LayersHook:
     def __init__(
         self,
         model: nn.Module,
@@ -39,58 +66,7 @@ class LayerHook:
         self.gradients.append(grad_input[0])
         if callable(self.backward_op):
             return self.backward_op(module, grad_input, grad_output, self.activations)
-
-class LayerForwardHook:
-    def __init__(
-        self,
-        model: nn.Module,
-        layer_index: int = 0,
-    ) -> None:
-        self.model = model
-        self.layer = None
-        self.layer_name = None
-        self.layer_index = layer_index
-        self.filters = None
-        self.activations = None
         
-        self.layer_name, self.layer = list(named_layers(self.model))[self.layer_index]
-        self.layer.register_forward_hook(self)
-
-    def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor) -> None:
-        if isinstance(module, nn.Conv2d):
-            self.filters = module.weight
-        self.activations = output
-
-    def __str__(self) -> str:
-        return { 'filters' : self.filters.shape, 'activations' : self.activations.shape }
-
-class LayerBackwardHook:
-    def __init__(
-        self,
-        model:nn.Module,
-        layer_index:int=0,
-        types:tuple=(nn.Conv2d, nn.ReLU, nn.MaxPool2d, nn.Linear, nn.AdaptiveAvgPool2d)
-    ) -> None:
-        self.model = model
-        self.index = 0
-        self.types = types
-        self.layer = None
-
-        for layer in self.model.modules():
-            if isinstance(layer, self.types):
-                if layer_index == self.index:
-                    self.layer = layer
-                    layer.register_backward_hook(self)
-                    break
-
-                self.index += 1
-
-    def __call__(self, module: nn.Module, grad_input: torch.Tensor, grad_output: torch.Tensor) -> None:
-        self.gradients = grad_input[0]
-
-    def __str__(self) -> str:
-        return { 'gradients' : self.gradients.shape }
-
 class ActivationsHook:
     def __init__(
         self,

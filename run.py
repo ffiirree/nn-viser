@@ -1,15 +1,14 @@
 from viser.utils.utils import named_layers
-from torchvision.models.inception import BasicConv2d
 from viser.attrs.smooth_grad import SmoothGrad
-from flask import Flask, url_for,render_template
-from flask_socketio import SocketIO, emit, send
+from flask import Flask,render_template
+from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 import torch
 from torch import nn
 import torchvision
 from PIL import Image
 import numpy as np
-from viser import ActivationsHook, FiltersHook, LayerForwardHook
+from viser import ActivationsHook, FiltersHook, LayerHook
 from viser.attrs import Saliency, GradCAM, GuidedSaliency
 from viser.utils import *
 import torchvision.transforms.functional as TF
@@ -79,7 +78,7 @@ def handle_saliency(data):
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     
-    hook = LayerForwardHook(model, int(data['layer']))
+    hook = LayerHook(model, int(data['layer']))
     
     image = Image.open(data['input'])
     x = TF.normalize(TF.resize(TF.to_tensor(image), [224, 224]), mean, std).to(device).unsqueeze(0).requires_grad_(True)
@@ -157,7 +156,7 @@ def handle_saliency(data):
     mean = [0.485, 0.456, 0.406]
     std = [0.229, 0.224, 0.225]
     
-    hook = LayerForwardHook(model, int(data['layer']))
+    hook = LayerHook(model, int(data['layer']))
     
     x = torch.randint(150, 180, [1, 3, 224, 224]) / 255
     x = TF.normalize(x, mean, std).to(device).requires_grad_(True)

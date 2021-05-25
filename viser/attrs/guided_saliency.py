@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from ..hooks import LayerBackwardHook
 
 __all__ = ['GuidedSaliency']
 

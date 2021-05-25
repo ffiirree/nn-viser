@@ -2,8 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.nn import Module
-from torch.nn.modules import activation
-from viser.hooks import LayerForwardHook
+from viser.hooks import LayerHook
 
 __all__ = ['GradCAM']
 
@@ -11,7 +10,7 @@ class GradCAM:
     def __init__(self, model: Module, layer_index: int) -> None:
         self.model = model
         self.layer_index = layer_index
-        self.forward_hook = LayerForwardHook(self.model, self.layer_index)
+        self.hook = LayerHook(self.model, self.layer_index)
         
         self.model.eval()
             
@@ -25,9 +24,9 @@ class GradCAM:
             input.grad.zero_()
 
         output = self.model(input)
-        loss = output[0, target] if target else output.max()
+        loss = output[0, target] if target and target < output.shape[1] else output.max()
         
-        activations = self.forward_hook.activations
+        activations = self.hook.activations
         gradients = torch.autograd.grad(loss, activations)[0]
         
         summed_grads = torch.mean(gradients, (2, 3), keepdim=True)
