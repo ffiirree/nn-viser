@@ -24,6 +24,7 @@ class GradCAM:
             input.grad.zero_()
 
         output = self.model(input)
+        # loss = torch.sum(output, 1)
         loss = output[0, target] if target and target < output.shape[1] else output.max()
         
         activations = self.hook.activations

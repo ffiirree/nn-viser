@@ -15,6 +15,7 @@
             <div class="item"><div class="title">weight decay</div><el-input class='value' type='number' size="small" v-model="params.weight_decay"  @change="update"/></div>
             <div class="item"><el-checkbox class='button' v-model="params.clip_grad" @change="update">clip grad</el-checkbox></div>
             <div class="item"><el-checkbox class='button' v-model="params.clamp" @change="update">clamp</el-checkbox></div>
+            <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
             <div class="iter">
@@ -46,7 +47,6 @@ export default {
     },
     created() {
         this.config()
-        this.update()
     },
     sockets: {
         models(data) {

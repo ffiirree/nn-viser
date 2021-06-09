@@ -17,6 +17,7 @@
             <div class="item"><div class="title">epochs</div><el-input class='value' type='number' size="small" v-model="params.epochs"  @change="update"/></div>
             <div class="item"><div class="title">lr</div><el-input class='value' type='number' size="small" v-model="params.lr"  @change="update"/></div>
             <div class="item"><el-checkbox class='button' v-model="params.clamp" @change="update">clamp</el-checkbox></div>
+            <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
             <div class="iter">
@@ -46,7 +47,6 @@ export default {
     },
     created() {
         this.config()
-        this.update()
     },
     sockets: {
         models(data) {

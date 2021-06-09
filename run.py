@@ -9,7 +9,7 @@ import torchvision
 from PIL import Image
 import numpy as np
 from viser import ActivationsHook, FiltersHook, LayerHook
-from viser.attrs import Saliency, GradCAM, GuidedSaliency
+from viser.attrs import *
 from viser.utils import *
 import torchvision.transforms.functional as TF
 import time
@@ -32,9 +32,19 @@ def get_input(filename: str):
     image = Image.open(filename).convert('RGB')
     return TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0), image
 
+images = { 
+          'static/images/snake.jpg': 56, 
+          'static/images/cat_dog.png' : 243, 
+          'static/images/spider.png': 72
+}
+
 @socketio.on('get_models')
 def get_models():
     emit('models', torch_models())
+    
+@socketio.on('get_images')
+def get_images():
+    emit('images', images)
 
 @socketio.on('get_layers')
 def model_layers(data):
@@ -216,6 +226,106 @@ def handle_saliency(data):
         'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
     })
     
+@socketio.on('intergrated_grad')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    target = int(data['target'])
+
+    smoothgrad = SmoothGrad(model)
+    attributions = smoothgrad.attribute(x, target, epochs=int(data['epochs']), abs=False).squeeze(0)
+
+    emit('response_intergrated_grad', {
+        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    })
+    
+@socketio.on('augmentedgrad')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, _ = get_input(data['input'])
+    target = int(data['target'])
+    
+    print(classes)
+    print(cls_names[243])
+    
+    ops = [
+        # CroppedPad([224 - 16, 224], [16, 0]),
+        # CroppedPad([224 - 16, 224], [0, 0]),
+        # CroppedPad([224, 224 - 16], [0, 16]),
+        CroppedPad([224, 224 - 16], [0, 0]),
+        CroppedPad([224 - 16, 224 - 16], [16, 16]),
+        # CroppedPad([224 - 16, 224 - 16], [0, 0]),
+        Original(),
+        # Invert(),
+        HorizontalFlip(),
+        # Compose([HorizontalFlip(), Invert()]),
+        # VerticalFlip(),
+
+        GaussianBlur([3, 3]),
+        GaussianBlur([5, 5]),
+        GaussianBlur([7, 7]),
+        # GaussianBlur([9, 9]),
+        # GaussianBlur([11, 11]),
+        # GaussianBlur([13, 13]),
+        Compose([HorizontalFlip(), GaussianBlur([3, 3])]),
+        Compose([HorizontalFlip(), GaussianBlur([5, 5])]),
+        Compose([HorizontalFlip(), GaussianBlur([7, 7])]),
+        # Compose([HorizontalFlip(), GaussianBlur([9, 9])]),
+        # Compose([HorizontalFlip(), GaussianBlur([11, 11])]),
+        # Compose([HorizontalFlip(), GaussianBlur([13, 13])]),
+        # AdjustSharpness(1.35),
+        # AdjustSharpness(1.25),
+        # AdjustSharpness(1.15),
+        # AdjustSharpness(0.75),
+        # AdjustSharpness(0.85),
+        # AdjustSharpness(0.95),
+        # Compose([HorizontalFlip(), AdjustSharpness(0.95)]),
+        # Compose([HorizontalFlip(), AdjustSharpness(0.85)]),
+        # Compose([HorizontalFlip(), AdjustSharpness(0.75)]),
+        # Compose([HorizontalFlip(), AdjustSharpness(1.15)]),
+        # Compose([HorizontalFlip(), AdjustSharpness(1.25)]),
+        # Compose([HorizontalFlip(), AdjustSharpness(1.35)]),
+        # AdjustBrightness(0.65),
+        # AdjustBrightness(1.35),
+        # AdjustContrast(0.65),
+        # AdjustContrast(1.35),
+        # Compose([HorizontalFlip(), AdjustBrightness(0.65)]),
+        # Compose([HorizontalFlip(), AdjustBrightness(1.35)]),
+        # Compose([HorizontalFlip(), AdjustContrast(0.65)]),
+        # Compose([HorizontalFlip(), AdjustContrast(1.35)]),
+        # Compose([VerticalFlip(), AdjustBrightness(0.75)]),
+        # Compose([VerticalFlip(), AdjustBrightness(1.25)]),
+        # Compose([VerticalFlip(), AdjustContrast(0.75)]),
+        # Compose([VerticalFlip(), AdjustContrast(1.25)]),
+        
+        # AdjustHue(-0.1),
+        # AdjustHue(0.1),
+        # Noise(20),
+        # Compose([HorizontalFlip(), Noise(20)]),
+        # Noise(2),
+
+        # Noise(20),
+        # Noise(20),
+        # Noise(20),
+    ]
+
+    augmentgrad = AugmentedGrad(model)
+    attributions = augmentgrad.attribute(x, ops, target, abs=False).squeeze(0)
+
+    saliency = Saliency(model)
+    saliency_attrs = saliency.attribute(x, target, abs=False).squeeze(0)
+
+    emit('response_augmentedgrad', {
+        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png'),
+        'guided_colorful' : save_image(saliency_attrs, f'static/out/grad_colorful_{time.time()}.png'),
+        'guided_grayscale' : save_image(torch.sum(torch.abs(saliency_attrs), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'guided_grad_x_image' :save_image(torch.sum(torch.abs(saliency_attrs * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    })
+    
 @socketio.on('gradcam')
 def handle_saliency(data):    
     model = get_model(data['model'])
@@ -255,6 +365,10 @@ def handle_saliency(data):
         'guided_saliecy': save_image(attributions, f'static/out/guided_saliency_{time.time()}.png'),
         'guided_grad_cam': save_image(TF.to_tensor(grad_cam) * attributions, f'static/out/guided_gradcam_{time.time()}.png')
     })
+from flask import request    
+@socketio.on_error_default  # Handles the default namespace
+def error_handler(e):
+    emit('error', { 'message': str(e) })
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

@@ -9,12 +9,11 @@
                 </div>
             <div class="item">
                 <div class="title">input</div>
-                <el-select class="value" size="small" v-model="params.input" @change="update">
-                    <el-option value='static/images/cat_dog.png'/>
-                    <el-option value='static/images/spider.png'/>
-                    <el-option value='static/images/snake.jpg'/>
+                <el-select class="value" size="small" v-model="params.input" @change="params.target = images[params.input]">
+                    <el-option v-for="image in Object.keys(images)" :key="images[image]" :value='image'/>
                 </el-select>
             </div>
+            <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
             <div class="layer">
@@ -37,20 +36,25 @@ export default {
     data() {
         return {
             models: [],
+            images: {},
             res: [],
             params: {
                 model: 'alexnet',
-                input: 'static/images/cat_dog.png',
+                input: '',
             }
         };
     },
     created() {
         this.config()
-        this.update()
     },
     sockets: {
         models(data) {
             this.models = data
+        },
+        images(data) {
+            this.images = data
+
+            this.params.input = Object.keys(data)[0]
         },
         response_filters(data) {
             this.res = data
@@ -59,6 +63,7 @@ export default {
     methods: {
         config() {
             this.$socket.emit('get_models')
+            this.$socket.emit('get_images')
         },
         update() {
             this.$socket.emit("filters", this.params);

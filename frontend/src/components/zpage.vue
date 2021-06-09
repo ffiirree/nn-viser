@@ -67,12 +67,16 @@
         },
         sockets: {
             connect() {
-                console.log(`socket connected.`);
+                this.$message.success('Socket connected !!');
             },
 
             disconnect() {
-                console.log("socket disconnected");
+                this.$message.error('Socket disconnected !!');
             },
+
+            error(err) {
+                this.$message.error(err.message)
+            }
         }
     }
 </script>

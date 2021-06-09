@@ -1,5 +1,5 @@
 <template>
-    <div class="page">
+    <div class="page" v-loading="loading" element-loading-background="rgba(0, 0, 0, 0.45)">
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
@@ -9,14 +9,13 @@
                 </div>
             <div class="item">
                 <div class="title">input</div>
-                <el-select class="value" size="small" v-model="params.input" @change="update">
-                    <el-option value='static/images/cat_dog.png'/>
-                    <el-option value='static/images/spider.png'/>
-                    <el-option value='static/images/snake.jpg'/>
+                <el-select class="value" size="small" v-model="params.input" @change="params.target = images[params.input]">
+                    <el-option v-for="image in Object.keys(images)" :key="images[image]" :value='image'/>
                 </el-select>
             </div>
             <div class="item"><div class="title">target</div><el-input class="value" size="small" type='number' v-model="params.target"  @change="update"/></div>
             <div class="item"><div class="title">epochs</div><el-input class="value" size="small" type='number' v-model="params.epochs"  @change="update"/></div>
+            <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
 
         </div>
         <div class="network">
@@ -36,34 +35,44 @@ export default {
     data() {
         return {
             models: [],
+            images: {},
             activations: [],
             params: {
                 model: 'alexnet',
-                input: 'static/images/cat_dog.png',
-                target: 243,
+                input: '',
+                target: null,
                 epochs: 50
             },
-            res: {}
+            res: {},
+            loading: false
         };
     },
     created() {
         this.config()
-        this.update()
     },
     sockets: {
         models(data) {
             this.models = data
         },
+        images(data) {
+            this.images = data
+
+            this.params.input = Object.keys(data)[0]
+            this.params.target = this.images[this.params.input]
+        },
         response_smooth_grad(data) {
             this.res = data
+            this.loading = false
         }
     },
     methods: {
         config() {
             this.$socket.emit('get_models')
+            this.$socket.emit('get_images')
         },
         update() {
             this.$socket.emit("smooth_grad", this.params);
+            this.loading = true
         }
     }
 };

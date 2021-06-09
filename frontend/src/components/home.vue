@@ -46,10 +46,20 @@
                         index: '/smooth_grad',
                         title: 'SmoothGrad'
                     },
+                    // {
+                    //     icon: 'fire',
+                    //     index: '/intergratedgrad',
+                    //     title: 'IntergratedGrad'
+                    // },
                     {
                         icon: 'fire',
                         index: '/gradcam',
                         title: 'GradCam'
+                    },
+                    {
+                        icon: 'fire',
+                        index: '/augmentedgrad',
+                        title: 'AugmentedGrad'
                     }
                 ],
             }

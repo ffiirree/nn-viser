@@ -9,10 +9,8 @@
             </div>
             <div class="item">
                 <div class="title">input</div>
-                <el-select class="value" size="small" v-model="params.input" @change="update">
-                    <el-option value='static/images/cat_dog.png'/>
-                    <el-option value='static/images/spider.png'/>
-                    <el-option value='static/images/dd_tree.jpg'/>
+                <el-select class="value" size="small" v-model="params.input" @change="params.target = images[params.input]">
+                    <el-option v-for="image in Object.keys(images)" :key="images[image]" :value='image'/>
                 </el-select>
             </div>
             <div class="item">
@@ -24,6 +22,7 @@
             <div class="item"><div class="title">epochs</div><el-input class='value' size="small" v-model="params.epochs"  @change="update"/></div>
             <div class="item"><div class="title">lr</div><el-input class='value' size="small" v-model="params.lr"  @change="update"/></div>
             <div class="item"><el-checkbox class='button' v-model="params.clamp" @change="update">clamp</el-checkbox></div>
+            <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
             <div class="iter">
@@ -40,10 +39,11 @@ export default {
         return {
             models: [],
             layers: {},
+            images: {},
             res: {},
             params: {
                 model: 'vgg19',
-                input: 'static/images/dd_tree.jpg',
+                input: '',
                 layer: 34,
                 activation: 94,
                 epochs: 251,
@@ -54,7 +54,6 @@ export default {
     },
     created() {
         this.config()
-        this.update()
     },
     sockets: {
         models(data) {
@@ -63,6 +62,11 @@ export default {
         layers(data) {
             this.layers = data
         },
+        images(data) {
+            this.images = data
+
+            this.params.input = Object.keys(data)[0]
+        },
         response_deep_dream(data) {
             this.res = data
         }
@@ -70,6 +74,7 @@ export default {
     methods: {
         config() {
             this.$socket.emit('get_models')
+            this.$socket.emit('get_images')
             this.getLayers()
         },
         getLayers() {
