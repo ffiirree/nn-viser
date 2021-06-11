@@ -54,7 +54,7 @@
                     {
                         icon: 'fire',
                         index: '/gradcam',
-                        title: 'GradCam'
+                        title: 'GradCAM'
                     },
                     {
                         icon: 'fire',
@@ -112,15 +112,19 @@
     }
     
     .network {
-        overflow-y: auto;
         flex: 1 1 auto;
         padding: 25px;
+        box-sizing: border-box;
+
+        overflow-y: auto;
     }
 }
 
 .image-wrapper {
     display: flex;
     flex-flow: column;
+    justify-content: center;
+    align-items: center;
 
     .image {
         flex: 0 0 auto;
@@ -129,6 +133,32 @@
         flex: 0 0 30px;
         padding-top: 5px;
         text-align: center;
+    }
+}
+
+.el-image {
+    width: 224px;
+    height: 224px;
+
+
+    .image-slot {
+        height: 100%;
+        width: 100%;
+        background: #e8eaec;
+        color: #909399;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 30px;
+
+        i {
+            font-family: element-icons!important;
+            font-style: normal;
+            font-weight: 400;
+            line-height: 1;
+            vertical-align: baseline;
+            display: inline-block;
+        }
     }
 }
 

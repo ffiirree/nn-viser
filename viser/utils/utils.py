@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchvision.transforms.functional as TF
 import viser.utils
 import os
+from PIL import Image
 import torchvision.models as models
 
 __all__ = ['manual_seed', 'save_image', 'named_layers', 'torch_models', 'get_model']
@@ -28,6 +29,9 @@ def manual_seed(seed: int = 0):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
     
+def read_image(filename: str, mode: str = 'RGB') -> torch.Tensor:
+    return TF.to_tensor(Image.open(filename).convert(mode)).mul_(255)
+
 def save_image(tensor: torch.Tensor, filename: str, normalize: bool = True) -> None:
     dir = os.path.dirname(filename)
     if not os.path.exists(dir):
@@ -56,3 +60,4 @@ def torch_models():
 
 def get_model(name:str, pretrained:bool=True) -> nn.Module:
     return models.__dict__[name](pretrained=pretrained)
+

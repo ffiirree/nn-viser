@@ -1,34 +1,30 @@
+from .core import Attribution
 import torch
 import torch.nn as nn
 
 __all__ = ['SmoothGrad']
 
-class SmoothGrad:
+class SmoothGrad(Attribution):
     def __init__(self, model: nn.Module) -> None:
         model.eval()
         self.model = model
     
-    def attribute(self, input: torch.Tensor, target: int = None, epochs: int=50, abs: bool = True):
+    def attribute(self, input: torch.Tensor, noise_level: float = 0.1, target: int = None, epochs: int = 50, abs: bool = True):
         assert input.dim() == 4, ''
         
-        grad = torch.zeros(input.shape)
+        grads = []
+        std = noise_level * (input.max() - input.min())
+        print(noise_level)
+        
+        for _ in range(epochs):
+            x = input.detach().clone() + torch.normal(mean=0, std=std, size=input.shape)
 
-        for i in range(epochs):
-            noise = torch.randn(input.shape) / 5
-            x = input.detach().clone()
-            
-            x += noise
-            
-            if not x.requires_grad:
-                x.requires_grad_()
-                
-            if x.grad is not None:
-                x.grad.zero_()
+            Attribution.prepare_input(x)
                 
             output = self.model(x)
-            # loss = torch.sum(output, 1)
             loss = output[0, target] if target and target < output.shape[1] else output.max()
             
-            grad += torch.autograd.grad(loss, x)[0]
+            grads.append(torch.autograd.grad(loss, x)[0])
         
-        return torch.abs(grad / epochs) if abs else (grad / epochs)
+        grad = torch.cat(grads).mean(dim=0, keepdim=True)
+        return torch.abs(grad) if abs else grad

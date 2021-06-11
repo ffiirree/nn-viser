@@ -18,11 +18,11 @@
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
-            <div class="input"><img :src="params.input" crossorigin='anonymous'/></div>
+            <div class="input"><img :src="params.input"/></div>
             <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.colorful" crossorigin='anonymous'/><div class="caption">Smooth Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grayscale" crossorigin='anonymous'/><div class="caption">Smooth Saliency</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grad_x_image" crossorigin='anonymous'/><div class="caption">Smooth Saliency * Image</div></div>
+                <div class="image-wrapper"><img class="image" :src="res.colorful"/><div class="caption">Smooth Gradient</div></div>
+                <div class="image-wrapper"><img class="image" :src="res.grayscale"/><div class="caption">Smooth Saliency</div></div>
+                <div class="image-wrapper"><img class="image" :src="res.grad_x_image"/><div class="caption">Smooth Saliency * Image</div></div>
             </div>
         </div>
     </div>

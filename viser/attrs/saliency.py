@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+from .core import Attribution
 
 __all__ = ['Saliency']
 
-class Saliency:
+class Saliency(Attribution):
     def __init__(self, model: nn.Module) -> None:
         model.eval()
         self.model = model
@@ -11,11 +12,7 @@ class Saliency:
     def attribute(self, input: torch.Tensor, target: int = None, abs: bool = True):
         assert input.dim() == 4, ''
         
-        if not input.requires_grad:
-            input.requires_grad_()
-            
-        if input.grad is not None:
-            input.grad.zero_()
+        Attribution.prepare_input(input)
 
         output = self.model(input)
         # loss = torch.sum(output, 1)

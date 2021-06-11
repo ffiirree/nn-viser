@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+from .core import Attribution
 
 __all__ = ['GuidedSaliency']
 
-class LayerHook:
+class LayerHook(Attribution):
     def __init__(self, layer: nn.Module) -> None:
         self.activation = None
         
@@ -31,11 +32,7 @@ class GuidedSaliency:
     def attribute(self, input: torch.Tensor, target: int = None, abs: bool = True):
         assert input.dim() == 4, ''
         
-        if not input.requires_grad:
-            input.requires_grad_()
-            
-        if input.grad is not None:
-            input.grad.zero_()
+        Attribution.prepare_input(input)
 
         output = self.model(input)
         loss = output[0, target] if target and target < output.shape[1] else output.max()

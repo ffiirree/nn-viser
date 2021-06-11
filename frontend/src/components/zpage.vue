@@ -47,11 +47,8 @@
         name: 'z-page',
         data() {
             return {
-                user: {},
                 collapse: false,
-                notifications: [],
-
-                tags: []
+                connected : false
             }
         },
         props: [
@@ -67,10 +64,12 @@
         },
         sockets: {
             connect() {
+                this.connected = true
                 this.$message.success('Socket connected !!');
             },
 
             disconnect() {
+                this.connected = false
                 this.$message.error('Socket disconnected !!');
             },
 

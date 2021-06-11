@@ -18,13 +18,13 @@
         <div class="network">
             <div class="layer">
                 <div class="name">input</div>
-                <img :src="params.input" crossorigin='anonymous' width="64px"/>
+                <img :src="params.input" width="64px"/>
             </div>
             
             <div class="layer" v-for="(layer, index) in res" :key="index">
                 <div class="name">{{layer.name}}</div>
                 <div class="filters" v-for="(filter, index) in layer.filters" :key="index">
-                    <img :src="filter" crossorigin='anonymous'/>
+                    <img :src="filter"/>
                 </div>
             </div>
         </div>

@@ -17,16 +17,37 @@
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
-            <div class="input"><img :src="params.input" crossorigin='anonymous'/></div>
-            <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.colorful" crossorigin='anonymous'/><div class="caption">Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grayscale" crossorigin='anonymous'/><div class="caption">Saliency</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grad_x_image" crossorigin='anonymous'/><div class="caption">Saliency * Image</div></div>
-            </div>
-            <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.guided_colorful" crossorigin='anonymous'/><div class="caption">Guided Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.guided_grayscale" crossorigin='anonymous'/><div class="caption">Guided Saliency</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.guided_grad_x_image" crossorigin='anonymous'/><div class="caption">Guided Saliency * Image</div></div>
+            <div class="network-inner">
+                <div class="input">
+                    <div class="image-wrapper">
+                        <el-image :src="params.input">
+                            <div slot="error" class="image-slot">
+                                <i class="el-icon-lollipop"></i>
+                            </div>
+                        </el-image>
+                        <div class="caption">Input</div>
+                    </div>
+                </div>
+                <div class="sliency">
+                    <div class="image-wrapper" v-for="key in Object.keys(saliency)" :key="key">
+                        <el-image :src="saliency[key]">
+                            <div slot="error" class="image-slot">
+                                <i class="el-icon-lollipop"></i>
+                            </div>
+                        </el-image>
+                        <div class="caption">{{key}}</div>
+                    </div>
+                </div>
+                <div class="sliency">
+                    <div class="image-wrapper" v-for="key in Object.keys(guided_saliency)" :key="key">
+                        <el-image :src="guided_saliency[key]">
+                            <div slot="error" class="image-slot">
+                                <i class="el-icon-lollipop"></i>
+                            </div>
+                        </el-image>
+                        <div class="caption">{{key}}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -39,13 +60,13 @@ export default {
         return {
             models: [],
             images: {},
-            activations: [],
             params: {
                 model: 'alexnet',
                 input: '',
                 target: null
             },
-            res: {},
+            saliency: {},
+            guided_saliency: {},
             loading: false
         };
     },
@@ -53,9 +74,13 @@ export default {
         this.config()
     },
     sockets: {
-        response_saliecy(data) {
-            this.res = data
-            this.loading = false
+        response_saliency(data) {
+            this.saliency = data
+            this.done()
+        },
+        response_guided_saliency(data) {
+            this.guided_saliency = data
+            this.done()
         },
 
         models(data) {
@@ -74,8 +99,16 @@ export default {
             this.$socket.emit('get_images')
         },
         update() {
-            this.$socket.emit("saliency", this.params);
             this.loading = true
+            this.saliency = {}
+            this.guided_saliency = {}
+            
+            this.$socket.emit("saliency", this.params);
+            this.$socket.emit("guided_saliency", this.params);
+        },
+        done() {
+            if(Object.keys(this.saliency).length && Object.keys(this.guided_saliency).length)
+                this.loading = false
         }
     }
 };
@@ -83,7 +116,7 @@ export default {
 
 <style rel="stylesheet/scss" lang="scss" scoped>
 .page {
-    .network {
+    .network-inner {
         display: flex;
         flex-flow: row;
 
@@ -100,11 +133,7 @@ export default {
             flex-flow: column;
             align-items: center;
             justify-items: center;
-            img {
-                padding: 10px;
-            }
         }
     }
 }
-
 </style>

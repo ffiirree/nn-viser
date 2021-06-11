@@ -1,5 +1,5 @@
 <template>
-    <div class="page">
+    <div class="page" v-loading="loading" element-loading-background="rgba(0, 0, 0, 0.35)">
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
@@ -23,15 +23,59 @@
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
-            <div class="input"><img :src="params.input" crossorigin='anonymous'/></div>
-            <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.grayscale" crossorigin='anonymous'/><div class="caption">Grayscale</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.colorful" crossorigin='anonymous'/><div class="caption">Grad CAM</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.on_image" crossorigin='anonymous'/><div class="caption">Grad CAM * Image</div></div>
+            <div class="input">
+                <div class="image-wrapper">
+                    <el-image :src="params.input">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Input</div>
+                </div>
             </div>
             <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.guided_saliecy" crossorigin='anonymous'/><div class="caption">Guided Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.guided_grad_cam" crossorigin='anonymous'/><div class="caption">Guided Grad CAM</div></div>
+                <div class="image-wrapper">
+                    <el-image :src="res.grayscale">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Grayscale</div>
+                </div>
+                <div class="image-wrapper">
+                    <el-image :src="res.colorful">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Grad CAM</div>
+                </div>
+                <div class="image-wrapper">
+                    <el-image :src="res.on_image">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Grad CAM * Image</div>
+                </div>
+            </div>
+            <div class="sliency">
+                <div class="image-wrapper">
+                    <el-image :src="res.guided_saliecy">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Guided Gradient</div>
+                </div>
+                <div class="image-wrapper">
+                    <el-image :src="res.guided_grad_cam">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Guided Grad CAM</div>
+                </div>
             </div>
         </div>
     </div>
@@ -45,13 +89,14 @@ export default {
             models: [],
             images: {},
             params: {
-                model: 'alexnet',
+                model: 'vgg19',
                 input: '',
-                layer: 11,
+                layer: 37,
                 target: null
             },
             layers: {},
-            res: {}
+            res: {},
+            loading: false
         };
     },
     created() {
@@ -72,6 +117,7 @@ export default {
         },
         response_gradcam(data) {
             this.res = data
+            this.loading = false
         }
     },
     methods: {
@@ -79,12 +125,13 @@ export default {
             this.$socket.emit('get_models')
             this.$socket.emit('get_images')
             this.getLayers()
-            this.update()
         },
         getLayers() {
             this.$socket.emit('get_layers', { model: this.params.model })
         },
         update() {
+            this.loading = true
+            this.res = {}
             this.$socket.emit("gradcam", this.params);
         }
     }
@@ -113,5 +160,4 @@ export default {
         }
     }
 }
-
 </style>

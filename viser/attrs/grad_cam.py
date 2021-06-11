@@ -3,10 +3,11 @@ import torch.nn as nn
 from torch import Tensor
 from torch.nn import Module
 from viser.hooks import LayerHook
+from .core import Attribution
 
 __all__ = ['GradCAM']
 
-class GradCAM:
+class GradCAM(Attribution):
     def __init__(self, model: Module, layer_index: int) -> None:
         self.model = model
         self.layer_index = layer_index
@@ -17,14 +18,9 @@ class GradCAM:
     def attribute(self, input: Tensor, target: int = None, relu_attributions: bool = False):
         assert input.dim() == 4, ""
         
-        if not input.requires_grad:
-            input.requires_grad_()
-            
-        if input.grad is not None:
-            input.grad.zero_()
+        Attribution.prepare_input(input)
 
         output = self.model(input)
-        # loss = torch.sum(output, 1)
         loss = output[0, target] if target and target < output.shape[1] else output.max()
         
         activations = self.hook.activations

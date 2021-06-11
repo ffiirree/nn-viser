@@ -1,4 +1,4 @@
-from viser.utils.utils import named_layers
+from viser.utils.utils import named_layers, read_image
 from viser.attrs.smooth_grad import SmoothGrad
 from flask import Flask,render_template
 from flask_socketio import SocketIO, emit
@@ -14,6 +14,7 @@ from viser.utils import *
 import torchvision.transforms.functional as TF
 import time
 import matplotlib.cm as cm
+import cv2
 
 STATIC_FOLDER = 'static'
 
@@ -29,13 +30,14 @@ def get_input(filename: str):
     mean = [0.485, 0.456, 0.406]
     std  = [0.229, 0.224, 0.225]
 
-    image = Image.open(filename).convert('RGB')
-    return TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0), image
+    image = TF.to_tensor(Image.open(filename).convert('RGB'))
+    return TF.normalize(image, mean, std).unsqueeze(0), image
 
 images = { 
           'static/images/snake.jpg': 56, 
-          'static/images/cat_dog.png' : 243, 
-          'static/images/spider.png': 72
+          'static/images/cat_dog.png' : 243,
+          'static/images/spider.png': 72,
+          'static/images/arctic_fox.jpeg': 279
 }
 
 @socketio.on('get_models')
@@ -56,7 +58,7 @@ def model_layers(data):
     emit('layers', layers)
             
 @socketio.on('activations')
-def handle_saliency(data):    
+def handle_activations(data):    
     model = get_model(data['model'])
     x, _ = get_input(data['input'])
     
@@ -78,7 +80,7 @@ def handle_saliency(data):
     emit('response_filters', filters_hook.save(f'static/out/{data["model"]}_{time.time()}'))
 
 @socketio.on('deep_dream')
-def handle_saliency(data):    
+def handle_guided_saliency(data):    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     model = get_model(data['model'])
@@ -112,7 +114,7 @@ def handle_saliency(data):
         })
 
 @socketio.on('class_max')
-def handle_saliency(data):
+def handle_class_max(data):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     manual_seed(0)
@@ -135,7 +137,7 @@ def handle_saliency(data):
         
         optimizer.zero_grad()
         output = model(x)
-        loss = -output[0, 130]
+        loss = -output[0, int(data['target'])]
         loss.backward()
         
         if bool(data['clip_grad']):
@@ -154,7 +156,7 @@ def handle_saliency(data):
 
 
 @socketio.on('act_max')
-def handle_saliency(data):
+def handle_act_max(data):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     manual_seed(0)
@@ -189,36 +191,49 @@ def handle_saliency(data):
             'output': filename
         })
 
-    
 @socketio.on('saliency')
 def handle_saliency(data):    
     model = get_model(data['model'])
-    x, _ = get_input(data['input'])
+    x, original = get_input(data['input'])
     target = int(data['target'])
 
     saliency = Saliency(model)
     attributions = saliency.attribute(x, target, abs=False).squeeze(0)
-    
+
+    emit('response_saliency', {
+        'vanilla Gradient' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'Gradient(abs)' : save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
+        'Gradient(abs) * Image' : save_image(normalize(torch.abs(attributions)) * original, normalize=False, filename=f'static/out/grad_x_image_colorful_{time.time()}.png'),
+        'Grayscale Gradient' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'Grayscale Gradinet * Image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), filename=f'static/out/grad_x_image_{time.time()}.png')
+    })
+
+@socketio.on('guided_saliency')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, original = get_input(data['input'])
+    target = int(data['target'])
+
     guided_saliency = GuidedSaliency(model)
     guided_attributions = guided_saliency.attribute(x, target, abs=False).squeeze(0)
 
-    emit('response_saliecy', {
-        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
-        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
-        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png'),
-        'guided_colorful' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
-        'guided_grayscale' : save_image(torch.sum(torch.abs(guided_attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
-        'guided_grad_x_image' :save_image(torch.sum(torch.abs(guided_attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    emit('response_guided_saliency', {
+        'Guided Saliency' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'Guided Saliency(Abs)' : save_image(torch.abs(guided_attributions), f'static/out/grad_colorful_{time.time()}.png'),
+        'Guided Saliency(Abs) * Image' : save_image(normalize(torch.abs(guided_attributions)) * original, normalize=False, filename=f'static/out/grad_colorful_{time.time()}.png'),
+        'Guided Grayscale Saliency' : save_image(torch.sum(torch.abs(guided_attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'Guided Grayscale Saliency * Image' :save_image(torch.sum(torch.abs(guided_attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
     })
     
 @socketio.on('smooth_grad')
 def handle_saliency(data):    
     model = get_model(data['model'])
     x, _ = get_input(data['input'])
+    noise_level = float(int(data['noise_level']) / 100)
     target = int(data['target'])
 
     smoothgrad = SmoothGrad(model)
-    attributions = smoothgrad.attribute(x, target, epochs=int(data['epochs']), abs=False).squeeze(0)
+    attributions = smoothgrad.attribute(x, noise_level=noise_level, target=target, epochs=int(data['epochs']), abs=False).squeeze(0)
 
     emit('response_smooth_grad', {
         'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
@@ -230,10 +245,11 @@ def handle_saliency(data):
 def handle_saliency(data):    
     model = get_model(data['model'])
     x, _ = get_input(data['input'])
+    noise_level = float(int(data['noise_level']) / 100)
     target = int(data['target'])
 
     smoothgrad = SmoothGrad(model)
-    attributions = smoothgrad.attribute(x, target, epochs=int(data['epochs']), abs=False).squeeze(0)
+    attributions = smoothgrad.attribute(x, noise_level=noise_level, target=target, epochs=int(data['epochs']), abs=False).squeeze(0)
 
     emit('response_intergrated_grad', {
         'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
@@ -244,18 +260,28 @@ def handle_saliency(data):
 @socketio.on('augmentedgrad')
 def handle_saliency(data):    
     model = get_model(data['model'])
-    x, _ = get_input(data['input'])
+    x, x_c = get_input(data['input'])
     target = int(data['target'])
     
-    print(classes)
-    print(cls_names[243])
+    # mean = [0.485, 0.456, 0.406]
+    # std  = [0.229, 0.224, 0.225]
+
+    # original = Image.open(data['input']).convert('RGB')
+    # opencvImage = cv2.cvtColor(np.array(original), cv2.COLOR_RGB2BGR)
+    # image = cv2.bilateralFilter(opencvImage,  19, 19 * 2, 19 / 2)
+    # filename = f'static/out/bilateral_{time.time()}.png'
+    # cv2.imwrite(filename, image)
+    # emit('bilateral', { "image": filename })
+    
+    # x = TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0)
+    # original = read_image(data['input'])
     
     ops = [
         # CroppedPad([224 - 16, 224], [16, 0]),
         # CroppedPad([224 - 16, 224], [0, 0]),
         # CroppedPad([224, 224 - 16], [0, 16]),
-        CroppedPad([224, 224 - 16], [0, 0]),
-        CroppedPad([224 - 16, 224 - 16], [16, 16]),
+        # CroppedPad([224, 224 - 16], [0, 0]),
+        # CroppedPad([224 - 16, 224 - 16], [16, 16]),
         # CroppedPad([224 - 16, 224 - 16], [0, 0]),
         Original(),
         # Invert(),
@@ -263,30 +289,30 @@ def handle_saliency(data):
         # Compose([HorizontalFlip(), Invert()]),
         # VerticalFlip(),
 
-        GaussianBlur([3, 3]),
+        # GaussianBlur([3, 3]),
         GaussianBlur([5, 5]),
         GaussianBlur([7, 7]),
-        # GaussianBlur([9, 9]),
+        GaussianBlur([9, 9]),
         # GaussianBlur([11, 11]),
         # GaussianBlur([13, 13]),
-        Compose([HorizontalFlip(), GaussianBlur([3, 3])]),
+        # Compose([HorizontalFlip(), GaussianBlur([3, 3])]),
         Compose([HorizontalFlip(), GaussianBlur([5, 5])]),
         Compose([HorizontalFlip(), GaussianBlur([7, 7])]),
-        # Compose([HorizontalFlip(), GaussianBlur([9, 9])]),
+        Compose([HorizontalFlip(), GaussianBlur([9, 9])]),
         # Compose([HorizontalFlip(), GaussianBlur([11, 11])]),
         # Compose([HorizontalFlip(), GaussianBlur([13, 13])]),
-        # AdjustSharpness(1.35),
-        # AdjustSharpness(1.25),
-        # AdjustSharpness(1.15),
-        # AdjustSharpness(0.75),
-        # AdjustSharpness(0.85),
-        # AdjustSharpness(0.95),
-        # Compose([HorizontalFlip(), AdjustSharpness(0.95)]),
-        # Compose([HorizontalFlip(), AdjustSharpness(0.85)]),
-        # Compose([HorizontalFlip(), AdjustSharpness(0.75)]),
-        # Compose([HorizontalFlip(), AdjustSharpness(1.15)]),
-        # Compose([HorizontalFlip(), AdjustSharpness(1.25)]),
-        # Compose([HorizontalFlip(), AdjustSharpness(1.35)]),
+        AdjustSharpness(1.35),
+        AdjustSharpness(1.25),
+        AdjustSharpness(1.15),
+        AdjustSharpness(0.75),
+        AdjustSharpness(0.85),
+        AdjustSharpness(0.95),
+        Compose([HorizontalFlip(), AdjustSharpness(0.95)]),
+        Compose([HorizontalFlip(), AdjustSharpness(0.85)]),
+        Compose([HorizontalFlip(), AdjustSharpness(0.75)]),
+        Compose([HorizontalFlip(), AdjustSharpness(1.15)]),
+        Compose([HorizontalFlip(), AdjustSharpness(1.25)]),
+        Compose([HorizontalFlip(), AdjustSharpness(1.35)]),
         # AdjustBrightness(0.65),
         # AdjustBrightness(1.35),
         # AdjustContrast(0.65),
@@ -302,28 +328,29 @@ def handle_saliency(data):
         
         # AdjustHue(-0.1),
         # AdjustHue(0.1),
+        # AdjustHue(-0.2),
+        # AdjustHue(0.2),
+        # AdjustHue(-0.05),
+        # AdjustHue(0.05),
+        # AdjustHue(-0.15),
+        # AdjustHue(0.15),
         # Noise(20),
         # Compose([HorizontalFlip(), Noise(20)]),
         # Noise(2),
-
-        # Noise(20),
-        # Noise(20),
-        # Noise(20),
+        # Noise(2),
+        # Noise(2),
+        # Noise(2),
     ]
 
     augmentgrad = AugmentedGrad(model)
     attributions = augmentgrad.attribute(x, ops, target, abs=False).squeeze(0)
 
-    saliency = Saliency(model)
-    saliency_attrs = saliency.attribute(x, target, abs=False).squeeze(0)
-
     emit('response_augmentedgrad', {
-        'colorful' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
-        'grayscale' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
-        'grad_x_image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png'),
-        'guided_colorful' : save_image(saliency_attrs, f'static/out/grad_colorful_{time.time()}.png'),
-        'guided_grayscale' : save_image(torch.sum(torch.abs(saliency_attrs), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
-        'guided_grad_x_image' :save_image(torch.sum(torch.abs(saliency_attrs * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+        'Augmented Saliency' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'Augmented Saliency(Abs)' : save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
+        'Augmented Saliency(Abs) * Image' :save_image(normalize(torch.abs(attributions)) * x_c, normalize=True, filename=f'static/out/grad_x_image_colorful_{time.time()}.png'),
+        'Augmented Saliency(Grayscale)' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'Augmented Saliency(Grayscale) * Image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0),f'static/out/grad_x_image_{time.time()}.png')
     })
     
 @socketio.on('gradcam')
@@ -352,7 +379,7 @@ def handle_saliency(data):
     heatmap[:, :, 3] = 0.4
 
     heatmap_on_image = Image.new('RGBA', (x.shape[2], x.shape[3]))
-    heatmap_on_image = Image.alpha_composite(heatmap_on_image, image.convert('RGBA'))
+    heatmap_on_image = Image.alpha_composite(heatmap_on_image, TF.to_pil_image(image).convert('RGBA'))
     heatmap_on_image = Image.alpha_composite(heatmap_on_image, Image.fromarray((heatmap * 255).astype(np.uint8)))
     on_image_filename = f'static/out/heatmap_on_image_{time.time()}.png'
     heatmap_on_image.save(on_image_filename)
@@ -365,7 +392,7 @@ def handle_saliency(data):
         'guided_saliecy': save_image(attributions, f'static/out/guided_saliency_{time.time()}.png'),
         'guided_grad_cam': save_image(TF.to_tensor(grad_cam) * attributions, f'static/out/guided_gradcam_{time.time()}.png')
     })
-from flask import request    
+    
 @socketio.on_error_default  # Handles the default namespace
 def error_handler(e):
     emit('error', { 'message': str(e) })

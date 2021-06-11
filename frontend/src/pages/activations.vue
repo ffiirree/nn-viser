@@ -19,14 +19,14 @@
             <div class="unit">
                 <div class="layer">
                     <div class="name">input</div>
-                    <img :src="params.input" crossorigin='anonymous'/>
+                    <img :src="params.input"/>
                 </div>
             </div>
             <div class="unit" v-for="(unit, index) in res.units" :key="index">
                 <div class="layer" v-for="(layer, name) in unit.layers" :key="name">
                     <div class="name">{{name}}</div>
                     <div class="channels" v-for="(value, name) in layer.channels" :key="name">
-                        <img :src="value.path" crossorigin='anonymous'/>
+                        <img :src="value.path"/>
                     </div>
                 </div>
             </div>

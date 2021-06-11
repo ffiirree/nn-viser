@@ -16,18 +16,39 @@
             <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
-        <div class="network">
-            <div class="input"><img :src="params.input" crossorigin='anonymous'/></div>
-            <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.colorful" crossorigin='anonymous'/><div class="caption">Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grayscale" crossorigin='anonymous'/><div class="caption">Saliency</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.grad_x_image" crossorigin='anonymous'/><div class="caption">Saliency * Image</div></div>
+        <div  class="network">
+            <div class="network-inner">
+            <div class="input">
+                <div class="image-wrapper">
+                    <el-image :src="params.input">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">Input</div>
+                </div>
             </div>
             <div class="sliency">
-                <div class="image-wrapper"><img class="image" :src="res.guided_colorful" crossorigin='anonymous'/><div class="caption">Guided Gradient</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.guided_grayscale" crossorigin='anonymous'/><div class="caption">Guided Saliency</div></div>
-                <div class="image-wrapper"><img class="image" :src="res.guided_grad_x_image" crossorigin='anonymous'/><div class="caption">Guided Saliency * Image</div></div>
+                <div class="image-wrapper" v-for="key in Object.keys(augmentedgrad)" :key="key">
+                    <el-image :src="augmentedgrad[key]">
+                        <div slot="error" class="image-slot">
+                            <i class="el-icon-lollipop"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">{{key}}</div>
+                </div>
             </div>
+            <div class="sliency">
+                <div class="image-wrapper" v-for="key in Object.keys(saliency)" :key="key">
+                    <el-image :src="saliency[key]">
+                        <div slot="error" class="image-slot" >
+                            <i class="el-icon-picture-outline"></i>
+                        </div>
+                    </el-image>
+                    <div class="caption">{{key}}</div>
+                </div>
+            </div>
+        </div>
         </div>
     </div>
 </template>
@@ -41,11 +62,12 @@ export default {
             images: {},
             activations: [],
             params: {
-                model: 'alexnet',
+                model: 'vgg19',
                 input: '',
                 target: null
             },
-            res: {},
+            augmentedgrad: {},
+            saliency: {},
             loading: false
         };
     },
@@ -54,9 +76,14 @@ export default {
     },
     sockets: {
         response_augmentedgrad(data) {
-            this.res = data
-            this.loading = false
+            this.augmentedgrad = data
+            this.done()
         },
+        response_saliency(data) {
+            this.saliency = data
+            this.done()
+        },
+        
         models(data) {
             this.models = data
         },
@@ -73,8 +100,15 @@ export default {
             this.$socket.emit('get_images')
         },
         update() {
-            this.$socket.emit("augmentedgrad", this.params);
+            this.augmentedgrad = {}
+            this.saliency = {}
             this.loading = true
+            this.$socket.emit("augmentedgrad", this.params);
+            this.$socket.emit("saliency", this.params);
+        },
+        done() {
+            if(Object.keys(this.augmentedgrad).length && Object.keys(this.saliency).length)
+                this.loading = false
         }
     }
 };
@@ -82,7 +116,7 @@ export default {
 
 <style rel="stylesheet/scss" lang="scss" scoped>
 .page {
-    .network {
+    .network-inner {
         display: flex;
         flex-flow: row;
 
