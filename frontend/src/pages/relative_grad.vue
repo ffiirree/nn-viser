@@ -20,7 +20,7 @@
             <div class="network-inner">
                 <div class="input">
                     <div class="image-wrapper">
-                        <el-image class="pixelated" :src="params.input">
+                        <el-image :src="params.input">
                             <div slot="error" class="image-slot">
                                 <i class="el-icon-lollipop"></i>
                             </div>
@@ -30,7 +30,7 @@
                 </div>
                 <div class="sliency">
                     <div class="image-wrapper" v-for="key in Object.keys(saliency)" :key="key">
-                        <el-image class="pixelated" :src="saliency[key]">
+                        <el-image :src="saliency[key]">
                             <div slot="error" class="image-slot">
                                 <i class="el-icon-lollipop"></i>
                             </div>
@@ -39,8 +39,8 @@
                     </div>
                 </div>
                 <div class="sliency">
-                    <div class="image-wrapper" v-for="key in Object.keys(guided_saliency)" :key="key">
-                        <el-image class="pixelated" :src="guided_saliency[key]">
+                    <div class="image-wrapper" v-for="key in Object.keys(relative_grad)" :key="key">
+                        <el-image :src="relative_grad[key]">
                             <div slot="error" class="image-slot">
                                 <i class="el-icon-lollipop"></i>
                             </div>
@@ -61,12 +61,12 @@ export default {
             models: [],
             images: {},
             params: {
-                model: 'alexnet',
+                model: 'vgg19',
                 input: '',
                 target: null
             },
             saliency: {},
-            guided_saliency: {},
+            relative_grad: {},
             loading: false
         };
     },
@@ -78,8 +78,8 @@ export default {
             this.saliency = data
             this.done()
         },
-        response_guided_saliency(data) {
-            this.guided_saliency = data
+        response_relative_grad(data) {
+            this.relative_grad = data
             this.done()
         },
 
@@ -101,13 +101,13 @@ export default {
         update() {
             this.loading = true
             this.saliency = {}
-            this.guided_saliency = {}
+            this.relative_grad = {}
             
             this.$socket.emit("saliency", this.params);
-            this.$socket.emit("guided_saliency", this.params);
+            this.$socket.emit("relative_grad", this.params);
         },
         done() {
-            if(Object.keys(this.saliency).length && Object.keys(this.guided_saliency).length)
+            if(Object.keys(this.saliency).length && Object.keys(this.relative_grad).length)
                 this.loading = false
         }
     }

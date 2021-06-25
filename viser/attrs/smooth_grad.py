@@ -24,6 +24,8 @@ class SmoothGrad(Attribution):
             output = self.model(x)
             loss = output[0, target] if target and target < output.shape[1] else output.max()
             
+            # loss = torch.sum(output, dim=1)
+            
             grads.append(torch.autograd.grad(loss, x)[0])
         
         grad = torch.cat(grads).mean(dim=0, keepdim=True)

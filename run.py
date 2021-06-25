@@ -1,3 +1,4 @@
+from viser.attrs.accumulated_grad import AccumulatedGrad
 from viser.utils.utils import named_layers, read_image
 from viser.attrs.smooth_grad import SmoothGrad
 from flask import Flask,render_template
@@ -31,18 +32,63 @@ def get_input(filename: str):
     std  = [0.229, 0.224, 0.225]
 
     image = TF.to_tensor(Image.open(filename).convert('RGB'))
-    return TF.normalize(image, mean, std).unsqueeze(0), image
+    return TF.normalize(image, mean=mean, std=std).unsqueeze(0), image
 
-images = { 
+    
+
+images = {
+        #   'static/images/mnist/m_3.png': 0, 
+        #   'static/images/mnist/m_10.png': 0, 
+        #   'static/images/mnist/m_2.png': 1, 
+        #   'static/images/mnist/m_5.png': 1, 
+        #   'static/images/mnist/m_1.png': 2, 
+        #   'static/images/mnist/m_35.png': 2, 
+        #   'static/images/mnist/m_18.png': 3, 
+        #   'static/images/mnist/m_30.png': 3, 
+        #   'static/images/mnist/m_4.png': 4, 
+        #   'static/images/mnist/m_27.png': 4, 
+        #   'static/images/mnist/m_15.png': 5, 
+        #   'static/images/mnist/m_8.png': 5, 
+        #   'static/images/mnist/m_11.png': 6, 
+        #   'static/images/mnist/m_50.png': 6, 
+        #   'static/images/mnist/m_0.png': 7,  
+        #   'static/images/mnist/m_17.png': 7,  
+        #   'static/images/mnist/m_61.png': 8,  
+        #   'static/images/mnist/m_84.png': 8,  
+        #   'static/images/mnist/m_12.png': 9,  
+        #   'static/images/mnist/m_16.png': 9,  
           'static/images/snake.jpg': 56, 
           'static/images/cat_dog.png' : 243,
           'static/images/spider.png': 72,
-          'static/images/arctic_fox.jpeg': 279
+          'static/images/hammerhead_val_00016395.jpeg': 4,
+          'static/images/hen_val_00021430.JPEG': 8,
+          'static/images/brambling_val_00046751.JPEG': 10,
+          'static/images/papillon_n02086910.jpeg': 157,  # papillon
+          'static/images/tailed_frog_n01644900.jpeg': 32,   # tailed_frog
+          'static/images/water_ouzel_n01601694.jpeg': 20,   # water_ouzel
+          'static/images/house_finch_n01532829.jpeg': 12,   # house_finch
+          'static/images/goldfish_n01443537_2297.jpeg': 1, # goldfish
+          'static/images/goldfish_val_00002241.jpeg': 1,
+          'static/images/tench_n01440764_8689.jpeg': 0, # tench
+          'static/images/tench_n01440764_1113.jpeg': 0  # tench
 }
 
 @socketio.on('get_models')
 def get_models():
-    emit('models', torch_models())
+    models = [
+        # 'mnist_1_1', 
+        # 'mnist_1_2',
+        # 'mnist_1_3',
+        # 'mnist_1_4',
+        # 'mnist_2_1',
+        # 'mnist_2_2',
+        # 'mnist_2_3',
+        # 'mnist_3_1',
+        # 'mnist_3_2',
+        # 'mnist_4_1',
+    ]
+    models += torch_models()
+    emit('models', models)
     
 @socketio.on('get_images')
 def get_images():
@@ -61,12 +107,19 @@ def model_layers(data):
 def handle_activations(data):    
     model = get_model(data['model'])
     x, _ = get_input(data['input'])
+    scope = str(data['scope'])
+    
+    model.eval()
     
     activations_hook = ActivationsHook(model, stop_types=nn.Linear)
+    activations_hook.activations.append({})
+    activations_hook.activations[0]['input'] = x
 
-    model(x)
-
-    emit('response_activations', activations_hook.save(f'static/out/alexnet_{time.time()}', normalization_scope='unit', split_channels=True))
+    output = torch.topk(torch.softmax(model(x), dim=1).squeeze(0), 5, 0, True, True)
+    predictions = [{ 'index': f'{i}', 'class': cls_names[i].replace('_', ' '), 'confidence': f'{v * 100:>4.2f}' } for i, v in zip(output.indices.detach().numpy(), output.values.detach().numpy())]
+    
+    emit('predictions', predictions)
+    emit('response_activations', activations_hook.save(f'static/out/alexnet_{time.time()}', normalization_scope=scope, split_channels=True))
 
 @socketio.on('filters')
 def handle_saliency(data):    
@@ -199,13 +252,32 @@ def handle_saliency(data):
 
     saliency = Saliency(model)
     attributions = saliency.attribute(x, target, abs=False).squeeze(0)
+    # attributions = torch.clamp(attributions, min=-0.05, max=0.05)
 
     emit('response_saliency', {
-        'vanilla Gradient' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        f'vanilla Gradient: [{attributions.min():>5.4f}, {attributions.max():>5.4f}]' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
         'Gradient(abs)' : save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
         'Gradient(abs) * Image' : save_image(normalize(torch.abs(attributions)) * original, normalize=False, filename=f'static/out/grad_x_image_colorful_{time.time()}.png'),
         'Grayscale Gradient' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
         'Grayscale Gradinet * Image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), filename=f'static/out/grad_x_image_{time.time()}.png')
+    })
+
+
+@socketio.on('relative_grad')
+def handle_saliency(data):    
+    model = get_model(data['model'])
+    x, original = get_input(data['input'])
+    target = int(data['target'])
+
+    saliency = RelativeGrad(model)
+    attributions = saliency.attribute(x, target, abs=False).squeeze(0)
+
+    emit('response_relative_grad', {
+        f'Relative Gradient: [{attributions.min():>5.4f}, {attributions.max():>5.4f}]' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'Relative Gradient(abs)' : save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
+        'Relative Gradient(abs) * Image' : save_image(normalize(torch.abs(attributions)) * original, normalize=False, filename=f'static/out/grad_x_image_colorful_{time.time()}.png'),
+        'Relative Grayscale Gradient' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'Relative Grayscale Gradinet * Image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), filename=f'static/out/grad_x_image_{time.time()}.png')
     })
 
 @socketio.on('guided_saliency')
@@ -216,9 +288,16 @@ def handle_saliency(data):
 
     guided_saliency = GuidedSaliency(model)
     guided_attributions = guided_saliency.attribute(x, target, abs=False).squeeze(0)
+    
+    # x2, _ = get_input(data['input'])
+    # model = get_model(data['model'])
+    # saliency = Saliency(model)
+    # attributions = saliency.attribute(x2, target, abs=False).squeeze(0)
+    # print(float(attributions.min()), float(attributions.max()))
+    # guided_attributions = torch.clamp(guided_attributions, min=float(attributions.min()), max=float(attributions.max()))
 
     emit('response_guided_saliency', {
-        'Guided Saliency' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        f'Guided Saliency: [{guided_attributions.min():>5.4f}, {guided_attributions.max():>5.4f}]' : save_image(guided_attributions, f'static/out/grad_colorful_{time.time()}.png'),
         'Guided Saliency(Abs)' : save_image(torch.abs(guided_attributions), f'static/out/grad_colorful_{time.time()}.png'),
         'Guided Saliency(Abs) * Image' : save_image(normalize(torch.abs(guided_attributions)) * original, normalize=False, filename=f'static/out/grad_colorful_{time.time()}.png'),
         'Guided Grayscale Saliency' : save_image(torch.sum(torch.abs(guided_attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
@@ -353,6 +432,29 @@ def handle_saliency(data):
         'Augmented Saliency(Grayscale) * Image' :save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0),f'static/out/grad_x_image_{time.time()}.png')
     })
     
+@socketio.on('accumulatedgrad')
+def handle_accumulatedgrad(data):
+    model = get_model(data['model'])
+    x, original = get_input(data['input'])
+    epochs = int(data['epochs'])
+    target = int(data['target'])
+
+    ag = AccumulatedGrad(model)
+    attributions,input = ag.attribute(x, epochs, target, abs=False)
+    attributions = attributions.squeeze(0)
+    
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    x2, original2 = get_input(data['input'])
+    emit('response_accumulatedgrad', {
+        'Input - Grad' : save_image(denormalize(input.squeeze(0), mean, std), f'static/out/input_{time.time()}.png'),
+        'Accumulated Saliency' : save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
+        'Accumulated Saliency(Abs)' : save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
+        'Accumulated Saliency(Abs) * Image' : save_image(normalize(torch.abs(attributions)) * original, normalize=False, filename=f'static/out/grad_colorful_{time.time()}.png'),
+        'Accumulated Grayscale Saliency' : save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
+        'Accumulated Grayscale Saliency * Image' :save_image(torch.sum(torch.abs(attributions * x2.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
+    })
+    
 @socketio.on('gradcam')
 def handle_saliency(data):    
     model = get_model(data['model'])
@@ -396,6 +498,7 @@ def handle_saliency(data):
 @socketio.on_error_default  # Handles the default namespace
 def error_handler(e):
     emit('error', { 'message': str(e) })
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

@@ -3,7 +3,7 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="params.model" @change="getLayers">
+                <el-select class="value" size="small" v-model="params.model" @change="update">
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
                 </div>
@@ -13,19 +13,15 @@
                     <el-option v-for="image in Object.keys(images)" :key="image" :value='image'/>
                 </el-select>
             </div>
-            <div class="item">
-                <div class="title">layer</div>
-                <el-select class="value" size="small" v-model="params.layer" @change="update">
-                    <el-option v-for="layer in layers" :value="layer.index" :key="layer.index">{{layer.index}} - {{layer.name}} / {{layer.layer}}</el-option>
-                </el-select>
-            </div>
+            <div class="item"><div class="title">epochs</div><el-input class="value" type='number' size="small" v-model="params.epochs"  @change="update"/></div>
             <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
-        <div class="network">
+        <div  class="network">
+            <div class="network-inner">
             <div class="input">
                 <div class="image-wrapper">
-                    <el-image class="pixelated" :src="params.input">
+                    <el-image :src="params.input">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>
@@ -34,49 +30,26 @@
                 </div>
             </div>
             <div class="sliency">
-                <div class="image-wrapper">
-                    <el-image class="pixelated" :src="res.grayscale">
+                <div class="image-wrapper" v-for="key in Object.keys(augmentedgrad)" :key="key">
+                    <el-image :src="augmentedgrad[key]">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>
                     </el-image>
-                    <div class="caption">Grayscale</div>
-                </div>
-                <div class="image-wrapper">
-                    <el-image class="pixelated" :src="res.colorful">
-                        <div slot="error" class="image-slot">
-                            <i class="el-icon-lollipop"></i>
-                        </div>
-                    </el-image>
-                    <div class="caption">Grad CAM</div>
-                </div>
-                <div class="image-wrapper">
-                    <el-image class="pixelated" :src="res.on_image">
-                        <div slot="error" class="image-slot">
-                            <i class="el-icon-lollipop"></i>
-                        </div>
-                    </el-image>
-                    <div class="caption">Grad CAM * Image</div>
+                    <div class="caption">{{key}}</div>
                 </div>
             </div>
             <div class="sliency">
-                <div class="image-wrapper">
-                    <el-image class="pixelated" :src="res.guided_saliecy">
-                        <div slot="error" class="image-slot">
-                            <i class="el-icon-lollipop"></i>
+                <div class="image-wrapper" v-for="key in Object.keys(saliency)" :key="key">
+                    <el-image :src="saliency[key]">
+                        <div slot="error" class="image-slot" >
+                            <i class="el-icon-picture-outline"></i>
                         </div>
                     </el-image>
-                    <div class="caption">Guided Gradient</div>
-                </div>
-                <div class="image-wrapper">
-                    <el-image class="pixelated" :src="res.guided_grad_cam">
-                        <div slot="error" class="image-slot">
-                            <i class="el-icon-lollipop"></i>
-                        </div>
-                    </el-image>
-                    <div class="caption">Guided Grad CAM</div>
+                    <div class="caption">{{key}}</div>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </template>
@@ -88,14 +61,15 @@ export default {
         return {
             models: [],
             images: {},
+            activations: [],
             params: {
                 model: 'vgg19',
                 input: '',
-                layer: 37,
-                target: null
+                target: null,
+                epochs: 10
             },
-            layers: {},
-            res: {},
+            augmentedgrad: {},
+            saliency: {},
             loading: false
         };
     },
@@ -103,11 +77,17 @@ export default {
         this.config()
     },
     sockets: {
+        response_accumulatedgrad(data) {
+            this.augmentedgrad = data
+            this.done()
+        },
+        response_saliency(data) {
+            this.saliency = data
+            this.done()
+        },
+        
         models(data) {
             this.models = data
-        },
-        layers(data) {
-            this.layers = data
         },
         images(data) {
             this.images = data
@@ -115,24 +95,25 @@ export default {
             this.params.input = Object.keys(data)[0]
             this.params.target = this.images[this.params.input]
         },
-        response_gradcam(data) {
-            this.res = data
-            this.loading = false
+        log(data) {
+            console.log(data.data)
         }
     },
     methods: {
         config() {
             this.$socket.emit('get_models')
             this.$socket.emit('get_images')
-            this.getLayers()
-        },
-        getLayers() {
-            this.$socket.emit('get_layers', { model: this.params.model })
         },
         update() {
+            this.augmentedgrad = {}
+            this.saliency = {}
             this.loading = true
-            this.res = {}
-            this.$socket.emit("gradcam", this.params);
+            this.$socket.emit("accumulatedgrad", this.params);
+            this.$socket.emit("saliency", this.params);
+        },
+        done() {
+            if(Object.keys(this.augmentedgrad).length && Object.keys(this.saliency).length)
+                this.loading = false
         }
     }
 };
@@ -140,7 +121,7 @@ export default {
 
 <style rel="stylesheet/scss" lang="scss" scoped>
 .page {
-    .network {
+    .network-inner {
         display: flex;
         flex-flow: row;
 
@@ -157,7 +138,11 @@ export default {
             flex-flow: column;
             align-items: center;
             justify-items: center;
+            img {
+                padding: 10px;
+            }
         }
     }
 }
+
 </style>

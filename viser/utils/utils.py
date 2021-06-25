@@ -7,6 +7,7 @@ import viser.utils
 import os
 from PIL import Image
 import torchvision.models as models
+from models import *
 
 __all__ = ['manual_seed', 'save_image', 'named_layers', 'torch_models', 'get_model']
 
@@ -59,5 +60,36 @@ def torch_models():
     return [name for name in models.__dict__ if name.islower() and not name.startswith('__') and callable(models.__dict__[name])]
 
 def get_model(name:str, pretrained:bool=True) -> nn.Module:
+    # if name.startswith('mnist'):
+    #     if name == 'mnist_1_1':
+    #         net = ThinNet(filters=[32], n_blocks=[1], n_layers=[1])
+    #     elif name == 'mnist_1_2':
+    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[2])
+    #     elif name == 'mnist_1_3':
+    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[3])
+    #     elif name == 'mnist_1_4':
+    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[4])
+    #     elif name == 'mnist_2_1':
+    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[1])
+    #     elif name == 'mnist_2_2':
+    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[2])
+    #     elif name == 'mnist_2_3':
+    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[3])
+    #     elif name == 'mnist_3_1':
+    #         net = ThinNet(filters=[32],n_blocks=[3], n_layers=[1])
+    #     elif name == 'mnist_3_2':
+    #         net = ThinNet(filters=[32],n_blocks=[3], n_layers=[2])
+    #     elif name == 'mnist_4_1':
+    #         net = ThinNet(filters=[32],n_blocks=[4], n_layers=[1])
+    #     # elif name == 'mnist_1_2':
+    #     #     net = ThinNet(n_blocks=1, n_layers=2)
+    #     # elif name == 'mnist_1_2':
+    #     #     net = ThinNet(n_blocks=1, n_layers=2)
+    #     # elif name == 'mnist_1_2':
+    #     #     net = ThinNet(n_blocks=1, n_layers=2)
+            
+    #     if pretrained:
+    #         net.load_state_dict(torch.load(f'logs/{name}_32_sgd.pth'))
+    #     return net
     return models.__dict__[name](pretrained=pretrained)
 

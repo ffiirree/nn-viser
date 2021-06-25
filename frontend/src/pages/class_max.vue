@@ -3,18 +3,18 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class='value' size="small" v-model="params.model" @change="update">
+                <el-select class='value' size="small" v-model="params.model">
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
-            <div class="item"><div class="title">target</div><el-input class='value' type='number' size="small" v-model="params.target"  @change="update"/></div>
-            <div class="item"><div class="title">epochs</div><el-input class='value' type='number' size="small" v-model="params.epochs"  @change="update"/></div>
-            <div class="item"><div class="title">lr</div><el-input class='value' type='number' size="small" v-model="params.lr"  @change="update"/></div>
-            <div class="item"><el-checkbox class='button' v-model="params.blur" @change="update">blur</el-checkbox></div>
-            <div class="item"><div class="title">blur freq</div><el-input class='value' type='number' size="small" v-model="params.blur_freq"  @change="update"/></div>
-            <div class="item"><div class="title">weight decay</div><el-input class='value' type='number' size="small" v-model="params.weight_decay"  @change="update"/></div>
-            <div class="item"><el-checkbox class='button' v-model="params.clip_grad" @change="update">clip grad</el-checkbox></div>
-            <div class="item"><el-checkbox class='button' v-model="params.clamp" @change="update">clamp</el-checkbox></div>
+            <div class="item"><div class="title">target</div><el-input class='value' type='number' size="small" v-model="params.target" /></div>
+            <div class="item"><div class="title">epochs</div><el-input class='value' type='number' size="small" v-model="params.epochs" /></div>
+            <div class="item"><div class="title">lr</div><el-input class='value' type='number' size="small" v-model="params.lr"  /></div>
+            <div class="item"><el-checkbox class='button' v-model="params.blur">blur</el-checkbox></div>
+            <div class="item"><div class="title">blur freq</div><el-input class='value' type='number' size="small" v-model="params.blur_freq" /></div>
+            <div class="item"><div class="title">weight decay</div><el-input class='value' type='number' size="small" v-model="params.weight_decay" /></div>
+            <div class="item"><el-checkbox class='button' v-model="params.clip_grad">clip grad</el-checkbox></div>
+            <div class="item"><el-checkbox class='button' v-model="params.clamp">clamp</el-checkbox></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
@@ -33,9 +33,9 @@ export default {
             models: [],
             res: {},
             params: {
-                model: 'alexnet',
+                model: 'vgg19',
                 target: 130,
-                epochs: 225,
+                epochs: 300,
                 lr: 3,
                 clamp: false,
                 blur: true,

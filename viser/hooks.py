@@ -1,10 +1,12 @@
 import os
 import json
-from viser.utils.utils import * 
+from viser.utils import * 
 import warnings
 import torch
 from torch import nn
 import torchvision
+import matplotlib.cm as cm
+from flask_socketio import SocketIO, emit
 
 __all__ = ['LayerHook', 'LayersHook', 'ActivationsHook', 'FiltersHook']
 
@@ -71,7 +73,7 @@ class ActivationsHook:
     def __init__(
         self,
         model:nn.Module,
-        split_types:tuple=(nn.Conv2d, nn.Linear, nn.AdaptiveAvgPool2d),
+        split_types:tuple=(nn.Conv2d, nn.Linear),
         stop_types:tuple=None,
     ) -> None:
         self.model = model
@@ -83,12 +85,11 @@ class ActivationsHook:
         self.max = None
         self.min = None
 
-        for layer in model.modules():
+        for _, layer in named_layers(model):
             if self.stop_types and isinstance(layer, self.stop_types):
                 break
 
-            if not isinstance(layer, (nn.Sequential, type(self.model))):
-                layer.register_forward_hook(self)
+            layer.register_forward_hook(self)
 
     def __call__(self, module: nn.Module, input: torch.Tensor, output: torch.Tensor):
         if isinstance(module, self.split_types):
@@ -99,16 +100,23 @@ class ActivationsHook:
         self.min = min(self.min, output.min().item()) if self.min != None else output.min().item()
 
         if isinstance(module, nn.Conv2d):
+            # print(type(input))
+            # for x in input:
+            #     print(type(x))
+            # self.activations[self.index][f'conv2d_x_{self.index}'] = input[0].detach().clone()
             self.activations[self.index][f'conv2d_{self.index}'] = output.detach().clone()
         elif isinstance(module, nn.Linear):
             self.activations[self.index][f'fc_{self.index}'] = output.detach().clone()
-        elif isinstance(module, nn.AdaptiveAvgPool2d):
-            self.activations[self.index][f'avg_{self.index}'] = output.detach().clone()
         elif isinstance(module, nn.ReLU):
             self.activations[self.index][f'relu_{self.index}'] = output.detach().clone()
         elif isinstance(module, nn.MaxPool2d):
-            self.activations[self.index][f'max_pool2d_{self.index}'] = output.detach().clone()
+            # self.activations[self.index][f'max_pool2d_{self.index}'] = output.detach().clone()
+            pass
+        elif isinstance(module, nn.AdaptiveAvgPool2d):
+            self.activations[self.index][f'avg_{self.index}'] = output.detach().clone()
         elif isinstance(module, nn.Dropout):
+            pass
+        elif isinstance(module, nn.BatchNorm2d):
             pass
         else:
             raise ValueError(self.index, type(module))
@@ -158,7 +166,15 @@ class ActivationsHook:
                         low, high = layer_low, layer_high
 
                     filename = f'{dir}/activations_{name}.png'
-                    torchvision.utils.save_image(unit[name].squeeze().unsqueeze(1), filename, normalize=True)
+                    image = unit[name].squeeze().unsqueeze(1)
+                    
+                    
+                    cmap = cm.get_cmap('bwr')
+                    heatmap = cmap(image.detach().numpy())
+                    image = torch.from_numpy(heatmap)
+                    # Image.fromarray((heatmap * 255).astype(np.uint8)).save(colorful_filename)
+    
+                    torchvision.utils.save_image(image, filename, normalize=True)
                     ret['units'][i]['layers'][name] = {'path': filename, 'range': [layer_low, layer_high]}
         else:
             for i, unit in enumerate(self.activations):
@@ -192,7 +208,13 @@ class ActivationsHook:
                                 low, high = ch_low, ch_high
 
                             filename = f'{dir}/activations_{name}/{idx}.png'
-                            torchvision.utils.save_image(activation.unsqueeze(0), filename, value_range=(low, high), normalize=True)
+                            _max = max(abs(low), abs(high))
+                            image = normalize(activation, -_max, _max)
+                            cmap = cm.get_cmap('RdBu')
+                            heatmap = cmap(image.detach().numpy())
+                            image = torch.from_numpy(heatmap).permute((2, 0, 1))
+                            # Image.fromarray((heatmap * 255).astype(np.uint8)).save(colorful_filename)
+                            torchvision.utils.save_image(image, filename, normalize=False)
 
                             ret['units'][i]['layers'][name]['channels'].append({'path': filename, 'range': [ch_low, ch_high]})
         return ret #json.dumps(ret, indent=4, separators=(', ', ': '))

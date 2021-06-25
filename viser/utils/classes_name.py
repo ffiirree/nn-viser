@@ -1,6 +1,4 @@
-classes = [
-    ["n01440764", "tench"],
-    ["n01443537", "goldfish"],
+classes = [["n01440764", "tench"], ["n01443537", "goldfish"],
     ["n01484850", "great_white_shark"],
     ["n01491361", "tiger_shark"],
     ["n01494475", "hammerhead"],

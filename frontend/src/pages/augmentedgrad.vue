@@ -10,7 +10,7 @@
             <div class="item">
                 <div class="title">input</div>
                 <el-select class="value" size="small" v-model="params.input" @change="params.target = images[params.input]">
-                    <el-option v-for="image in Object.keys(images)" :key="images[image]" :value='image'/>
+                    <el-option v-for="image in Object.keys(images)" :key="image" :value='image'/>
                 </el-select>
             </div>
             <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>

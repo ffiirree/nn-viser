@@ -62,6 +62,16 @@ export const routes = [
                 component: () => import('../pages/intergratedgrad'),
                 meta: { title: 'IntergratedGrad' }
             },
+            {
+                path: '/accumulated_grad',
+                component: () => import('../pages/accumulated_grad'),
+                meta: { title: 'AccumulatedGrad' }
+            },
+            {
+                path: '/relative_grad',
+                component: () => import('../pages/relative_grad'),
+                meta: { title: 'RelativeGrad' }
+            },
         ]
     }
 ];

@@ -10,7 +10,7 @@
             <div class="item">
                 <div class="title">input</div>
                 <el-select class="value" size="small" v-model="params.input" @change="params.target = images[params.input]">
-                    <el-option v-for="image in Object.keys(images)" :key="images[image]" :value='image'/>
+                    <el-option v-for="image in Object.keys(images)" :key="image" :value='image'/>
                 </el-select>
             </div>
             <div class="item"><div class="title">target</div><el-input class="value" size="small" type='number' v-model="params.target"  @change="update"/></div>
@@ -21,7 +21,7 @@
         <div class="network">
             <div class="input">
                 <div class="image-wrapper">
-                    <el-image :src="params.input">
+                    <el-image class="pixelated" :src="params.input">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>
@@ -31,7 +31,7 @@
             </div>
             <div class="sliency">
                 <div class="image-wrapper">
-                    <el-image :src="res.colorful">
+                    <el-image class="pixelated" :src="res.colorful">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>
@@ -39,7 +39,7 @@
                     <div class="caption">Smooth Gradient</div>
                 </div>
                 <div class="image-wrapper">
-                    <el-image :src="res.grayscale">
+                    <el-image class="pixelated" :src="res.grayscale">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>
@@ -47,7 +47,7 @@
                     <div class="caption">Smooth Saliency</div>
                 </div>
                 <div class="image-wrapper">
-                    <el-image :src="res.grad_x_image">
+                    <el-image class="pixelated" :src="res.grad_x_image">
                         <div slot="error" class="image-slot">
                             <i class="el-icon-lollipop"></i>
                         </div>

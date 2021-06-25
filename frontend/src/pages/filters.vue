@@ -18,13 +18,13 @@
         <div class="network">
             <div class="layer">
                 <div class="name">input</div>
-                <img :src="params.input" width="64px"/>
+                <img class="pixelated" :src="params.input" width="64px"/>
             </div>
             
             <div class="layer" v-for="(layer, index) in res" :key="index">
                 <div class="name">{{layer.name}}</div>
                 <div class="filters" v-for="(filter, index) in layer.filters" :key="index">
-                    <img :src="filter"/>
+                    <img class="pixelated" :src="filter"/>
                 </div>
             </div>
         </div>

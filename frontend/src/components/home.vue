@@ -13,53 +13,87 @@
                 menu: [
                     {
                         icon: 'fire',
-                        index: '/activations',
-                        title: 'Activations'
+                        index: '/feature',
+                        title: 'Feature Visualization',
+                        sub_items: [
+                            {
+                                icon: 'fire',
+                                index: '/activations',
+                                title: 'Activations'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/filters',
+                                title: 'Filters'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/class_max',
+                                title: 'Class Maximum'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/activation_max',
+                                title: 'Activation Maximum'
+                            },                    
+                            {
+                                icon: 'fire',
+                                index: '/deep_dream',
+                                title: 'Deep Dream'
+                            },
+                        ]
                     },
                     {
                         icon: 'fire',
-                        index: '/filters',
-                        title: 'Filters'
+                        index: '/attribution',
+                        title: 'Attribution',
+                        sub_items: [
+                            {
+                                icon: 'fire',
+                                index: '/saliency',
+                                title: 'Saliency'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/smooth_grad',
+                                title: 'SmoothGrad'
+                            },
+                            // {
+                            //     icon: 'fire',
+                            //     index: '/intergratedgrad',
+                            //     title: 'IntergratedGrad'
+                            // },
+                            {
+                                icon: 'fire',
+                                index: '/gradcam',
+                                title: 'GradCAM'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/augmentedgrad',
+                                title: 'AugmentedGrad'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/accumulated_grad',
+                                title: 'AccumulatedGrad'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/relative_grad',
+                                title: 'RelativeGrad'
+                            }
+                        ]
                     },
                     {
                         icon: 'fire',
-                        index: '/class_max',
-                        title: 'Class Maximum'
+                        index: '/adversarial',
+                        title: 'Adversarial Attack',
                     },
                     {
                         icon: 'fire',
-                        index: '/activation_max',
-                        title: 'Activation Maximum'
-                    },                    
-                    {
-                        icon: 'fire',
-                        index: '/deep_dream',
-                        title: 'Deep Dream'
-                    },
-                    {
-                        icon: 'fire',
-                        index: '/saliency',
-                        title: 'Saliency'
-                    },
-                    {
-                        icon: 'fire',
-                        index: '/smooth_grad',
-                        title: 'SmoothGrad'
-                    },
-                    // {
-                    //     icon: 'fire',
-                    //     index: '/intergratedgrad',
-                    //     title: 'IntergratedGrad'
-                    // },
-                    {
-                        icon: 'fire',
-                        index: '/gradcam',
-                        title: 'GradCAM'
-                    },
-                    {
-                        icon: 'fire',
-                        index: '/augmentedgrad',
-                        title: 'AugmentedGrad'
+                        index: '/dim_reduction',
+                        title: 'Dimensionality Reduction'
                     }
                 ],
             }
@@ -140,7 +174,6 @@
     width: 224px;
     height: 224px;
 
-
     .image-slot {
         height: 100%;
         width: 100%;
@@ -160,6 +193,10 @@
             display: inline-block;
         }
     }
+}
+
+.pixelated {
+    image-rendering: pixelated;
 }
 
 </style>

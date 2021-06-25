@@ -3,9 +3,10 @@ import torchvision.transforms.functional as TF
 
 __all__ = ['normalize', 'denormalize', 'Denormalize']
 
-def normalize(tensor):
+def normalize(tensor, low = None, high = None):
     tensor = tensor.detach().clone()
-    low, high = float(tensor.min()), float(tensor.max())
+    if low is None or high is None:
+        low, high = float(tensor.min()), float(tensor.max())
     tensor.sub_(low).div_(max(high - low, 1e-5))
     return tensor
 
