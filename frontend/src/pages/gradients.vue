@@ -22,6 +22,7 @@
                     <el-option value='channel'/>
                 </el-select>
             </div>
+            <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
@@ -50,15 +51,6 @@
                     </div>
                 </div>
             </div>
-            <div class="output">
-                <div class="name">output</div>
-                <div class="predictions">
-                    <div class="item" v-for="pre in predictions" :key="pre.class">
-                        <div class="bar"><div class="bar-inner" :style="`width: ${pre.confidence}%; background: rgb(${205 - 2 * pre.confidence}, ${205 - pre.confidence}, 255)`"></div></div>
-                        <div class="value">{{pre.confidence}}</div><div class="class">{{pre.class}}</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </template>
@@ -70,12 +62,12 @@ export default {
             models: [],
             images: {},
             topk:{},
-            predictions: {},
             res: [],
             params: {
                 model: 'vgg11',
                 input: '',
-                scope: 'layer'
+                scope: 'layer',
+                target: null
             }
         };
     },
@@ -90,20 +82,18 @@ export default {
             this.images = data
 
             this.params.input = Object.keys(data)[0]
+            this.params.target = this.images[this.params.input]
         },
         logs(data) {
             console.log(data)
         },
-        response_activations(data) {
+        response_gradients(data) {
             // console.log(data)
             this.res = data
             this.$forceUpdate()
         },
         topk(data) {
             this.topk = data;
-        },
-        predictions(data) {
-            this.predictions = data;
         }
     },
     methods: {
@@ -112,7 +102,7 @@ export default {
             this.$socket.emit("get_images")
         },
         update() {
-            this.$socket.emit("activations", this.params);
+            this.$socket.emit("gradients", this.params);
         },
     }
 };
@@ -172,44 +162,6 @@ export default {
                 }
             }
         }
-
-        .output {
-            .name {
-                text-align: center;
-            }
-
-            .predictions {
-                width: 400px;
-                .item {
-                    display: flex;
-                    flex-flow: row;
-
-                    .bar {
-                        flex: 0 0 100px;
-                        height: 6px;
-                        border: 1px solid #dddddd;
-                        display: flex;
-                    }
-
-                    .value {
-                        padding-left: 10px;
-                        box-sizing: border-box;
-
-                        flex: 0 0  50px;
-                        text-align: right;
-                    }
-
-                    .class {
-                        padding-left: 15px;
-                        box-sizing: border-box;
-                        flex: 0 0 250px;
-                        text-align: left;
-                    }
-                }
-            }
-        }
-        
-
     }
 }
 

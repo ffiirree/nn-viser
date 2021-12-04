@@ -6,7 +6,7 @@ Vue.use(Router);
 export const routes = [
     {
         path: '/',
-        redirect: '/saliency'
+        redirect: '/filters'
     },
     {
         path: '/',
@@ -16,6 +16,11 @@ export const routes = [
                 path: '/activations',
                 component: () => import('../pages/activations'),
                 meta: { title: 'Activations' }
+            },
+            {
+                path: '/gradients',
+                component: () => import('../pages/gradients'),
+                meta: { title: 'Gradients' }
             },
             {
                 path: '/filters',
@@ -71,6 +76,31 @@ export const routes = [
                 path: '/relative_grad',
                 component: () => import('../pages/relative_grad'),
                 meta: { title: 'RelativeGrad' }
+            },
+            {
+                path: '/fgsm',
+                component: () => import('../pages/fgsm'),
+                meta: { title: 'FGSM' }
+            },
+            {
+                path: '/fgsm_grad',
+                component: () => import('../pages/fgsm_grad'),
+                meta: { title: 'FGSM Gradients' }
+            },
+            {
+                path: '/fgsm_grad_diff',
+                component: () => import('../pages/fgsm_grad_diff'),
+                meta: { title: 'FGSM Gradients Diff' }
+            },
+            {
+                path: '/fgsm_act',
+                component: () => import('../pages/fgsm_activations'),
+                meta: { title: 'FGSM Activations' }
+            },
+            {
+                path: '/fgsm_act_diff',
+                component: () => import('../pages/fgsm_activations_diff'),
+                meta: { title: 'FGSM Activations Diff' }
             },
         ]
     }

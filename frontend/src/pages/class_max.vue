@@ -7,7 +7,7 @@
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
-            <div class="item"><div class="title">target</div><el-input class='value' type='number' size="small" v-model="params.target" /></div>
+            <div class="item"><div class="title">target</div><el-input class='value' type='number' size="small" v-model="params.target" @change="update"/></div>
             <div class="item"><div class="title">epochs</div><el-input class='value' type='number' size="small" v-model="params.epochs" /></div>
             <div class="item"><div class="title">lr</div><el-input class='value' type='number' size="small" v-model="params.lr"  /></div>
             <div class="item"><el-checkbox class='button' v-model="params.blur">blur</el-checkbox></div>
@@ -21,6 +21,12 @@
             <div class="iter">
                 <img :src="res.output" width="256" height="256"/>
                 <div>epoch = {{res.epoch}}, loss = {{res.loss}}</div>
+
+                <div class="predictions">
+                    <div class="item" v-for="cls in res.topk" :key="cls.index">
+                        <div class="name">{{cls.index}}/{{cls.class}}</div><div class="value">{{cls.confidence}}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -74,6 +80,26 @@ export default {
             display: flex;
             flex-flow: column;
             align-items: center;
+        }
+
+        .predictions {
+            .item {
+                display: flex;
+                flex-flow: column;
+                margin: 10px 0;
+                align-items: center;
+                justify-content: center;
+
+                .name {
+                    text-align: center;
+                    color: #666;
+                }
+
+                .value {
+                    color: #333;
+                    font-weight: 600;
+                }
+            }
         }
     }
 }

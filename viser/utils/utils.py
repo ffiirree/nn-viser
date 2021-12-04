@@ -1,15 +1,17 @@
 import numpy as np
 import random
 import torch
-import torch.nn as nn
+import torchvision
 import torchvision.transforms.functional as TF
 import viser.utils
 import os
 from PIL import Image
-import torchvision.models as models
-from models import *
+import matplotlib.cm as cm
+import timm
 
-__all__ = ['manual_seed', 'save_image', 'named_layers', 'torch_models', 'get_model']
+__all__ = ['manual_seed', 'save_image', 'named_layers',
+           'save_RdBu_image']
+
 
 def manual_seed(seed: int = 0):
     r"""
@@ -29,20 +31,43 @@ def manual_seed(seed: int = 0):
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.enabled = False
-    
+
+
 def read_image(filename: str, mode: str = 'RGB') -> torch.Tensor:
     return TF.to_tensor(Image.open(filename).convert(mode)).mul_(255)
+
 
 def save_image(tensor: torch.Tensor, filename: str, normalize: bool = True) -> None:
     dir = os.path.dirname(filename)
     if not os.path.exists(dir):
         os.makedirs(dir)
-    image = TF.to_pil_image(viser.utils.normalize(tensor) if normalize else tensor)
+    image = TF.to_pil_image(viser.utils.normalize(
+        tensor) if normalize else tensor)
     image.save(filename)
-    
+
     return filename
 
-def named_layers(module, memo = None, prefix: str = ''):
+
+def save_RdBu_image(filename: str, image: torch.Tensor, range: torch.Tensor = None):
+
+    dir = os.path.dirname(filename)
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    # -abs_max, abs_max
+    abs_max = range if range else max(abs(image.min()), abs(image.max()))
+    image = viser.utils.normalize(image, -abs_max, abs_max)
+
+    # RdBu
+    image = torch.from_numpy(cm.get_cmap('RdBu')(image.detach().cpu().numpy()))
+    image = image.permute((0, 3, 1, 2))
+
+    torchvision.utils.save_image(
+        image, filename, nrow=1, padding=1, normalize=False)
+    return filename
+
+
+def named_layers(module, memo=None, prefix: str = ''):
     if memo is None:
         memo = set()
     if module not in memo:
@@ -55,41 +80,3 @@ def named_layers(module, memo = None, prefix: str = ''):
             submodule_prefix = prefix + ('.' if prefix else '') + name
             for m in named_layers(module, memo, submodule_prefix):
                 yield m
-
-def torch_models():
-    return [name for name in models.__dict__ if name.islower() and not name.startswith('__') and callable(models.__dict__[name])]
-
-def get_model(name:str, pretrained:bool=True) -> nn.Module:
-    # if name.startswith('mnist'):
-    #     if name == 'mnist_1_1':
-    #         net = ThinNet(filters=[32], n_blocks=[1], n_layers=[1])
-    #     elif name == 'mnist_1_2':
-    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[2])
-    #     elif name == 'mnist_1_3':
-    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[3])
-    #     elif name == 'mnist_1_4':
-    #         net = ThinNet(filters=[32],n_blocks=[1], n_layers=[4])
-    #     elif name == 'mnist_2_1':
-    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[1])
-    #     elif name == 'mnist_2_2':
-    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[2])
-    #     elif name == 'mnist_2_3':
-    #         net = ThinNet(filters=[32],n_blocks=[2], n_layers=[3])
-    #     elif name == 'mnist_3_1':
-    #         net = ThinNet(filters=[32],n_blocks=[3], n_layers=[1])
-    #     elif name == 'mnist_3_2':
-    #         net = ThinNet(filters=[32],n_blocks=[3], n_layers=[2])
-    #     elif name == 'mnist_4_1':
-    #         net = ThinNet(filters=[32],n_blocks=[4], n_layers=[1])
-    #     # elif name == 'mnist_1_2':
-    #     #     net = ThinNet(n_blocks=1, n_layers=2)
-    #     # elif name == 'mnist_1_2':
-    #     #     net = ThinNet(n_blocks=1, n_layers=2)
-    #     # elif name == 'mnist_1_2':
-    #     #     net = ThinNet(n_blocks=1, n_layers=2)
-            
-    #     if pretrained:
-    #         net.load_state_dict(torch.load(f'logs/{name}_32_sgd.pth'))
-    #     return net
-    return models.__dict__[name](pretrained=pretrained)
-

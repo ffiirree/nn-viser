@@ -3,7 +3,7 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="params.model" @change="update">
+                <el-select class="value" size="small" v-model="params.model" filterable @change="update">
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
@@ -22,6 +22,8 @@
                     <el-option value='channel'/>
                 </el-select>
             </div>
+            <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
+            <div class="item"><div class="title">&epsilon;</div><el-input class="value" size="small" type='number' v-model="params.epsilon"  @change="update"/></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
         <div class="network">
@@ -75,7 +77,9 @@ export default {
             params: {
                 model: 'vgg11',
                 input: '',
-                scope: 'layer'
+                scope: 'layer',
+                target: null,
+                epsilon: 0.03
             }
         };
     },
@@ -90,11 +94,12 @@ export default {
             this.images = data
 
             this.params.input = Object.keys(data)[0]
+            this.params.target = this.images[this.params.input]
         },
         logs(data) {
             console.log(data)
         },
-        response_activations(data) {
+        response_fgsm_activations_diff(data) {
             // console.log(data)
             this.res = data
             this.$forceUpdate()
@@ -104,6 +109,9 @@ export default {
         },
         predictions(data) {
             this.predictions = data;
+        },
+        range(data) {
+            console.log(data)
         }
     },
     methods: {
@@ -112,7 +120,7 @@ export default {
             this.$socket.emit("get_images")
         },
         update() {
-            this.$socket.emit("activations", this.params);
+            this.$socket.emit("fgsm_activations_diff", this.params);
         },
     }
 };

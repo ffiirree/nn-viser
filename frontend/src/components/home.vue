@@ -23,6 +23,11 @@
                             },
                             {
                                 icon: 'fire',
+                                index: '/gradients',
+                                title: 'Gradients'
+                            },
+                            {
+                                icon: 'fire',
                                 index: '/filters',
                                 title: 'Filters'
                             },
@@ -89,6 +94,33 @@
                         icon: 'fire',
                         index: '/adversarial',
                         title: 'Adversarial Attack',
+                        sub_items: [
+                            {
+                                icon: 'fire',
+                                index: '/fgsm',
+                                title: 'FGSM'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/fgsm_grad',
+                                title: 'FGSM Gradients'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/fgsm_grad_diff',
+                                title: 'FGSM Gradients Diff'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/fgsm_act',
+                                title: 'FGSM Activations'
+                            },
+                            {
+                                icon: 'fire',
+                                index: '/fgsm_act_diff',
+                                title: 'FGSM Activations Diff'
+                            }
+                        ]
                     },
                     {
                         icon: 'fire',

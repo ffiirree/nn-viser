@@ -11,12 +11,12 @@ Vue.use(VueAxios, axios);
 Vue.use(ElementUI);
 Vue.use(new VueSocketIO({
     debug: true,
-    connection: 'http://127.0.0.1:5000/',
+    connection: 'http://localhost:5000/',
 }))
 
 Vue.config.productionTip = false
 
-axios.defaults.baseURL = "http://127.0.0.1:5000/";
+axios.defaults.baseURL = "http://localhost:5000/";
 
 new Vue({
   render: h => h(App),
