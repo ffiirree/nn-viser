@@ -3,7 +3,7 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="params.model" @change="update">
+                <el-select class="value" size="small" v-model="params.model" filterable @change="update">
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
                 </div>

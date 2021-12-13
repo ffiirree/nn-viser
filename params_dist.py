@@ -28,18 +28,19 @@ if __name__ == '__main__':
     
     plt.ion()
     fig = plt.figure()
-    plt.xlim((-1, 1))
+    # plt.xlim((-1, 1))
     ax = plt.subplot()
-    ax.axis([-1, 1, -1, 1])
-    ax.axis('equal')
+    # ax.axis([-1, 1, -1, 1])
+    # ax.axis('equal')
     for name, layer in named_layers(model):
-        if isinstance(layer, (nn.Conv2d, blocks.GaussianFilter)) and layer.kernel_size[0] > 1:
+        if isinstance(layer, (nn.Conv2d, blocks.GaussianFilter, blocks.PointwiseBlock)):# and layer.kernel_size[0] > 1:
             w = layer.weight.flatten(0).detach().numpy()
             y = torch.normal(w.mean(), w.std(), w.shape).flatten(0).detach().numpy()
             plt.title(f'{name}_k{layer.kernel_size[0]}_s{layer.stride[0]}')
             
             
-            ax.scatter(w, y, s=1)
+            # ax.scatter(w, y, s=1)
+            ax.hist(w, bins=100, density=True)
             plt.pause(2)
             # break
     plt.pause(20)

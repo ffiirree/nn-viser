@@ -1,9 +1,9 @@
 <template>
-    <div class="page" v-loading="loading" element-loading-background="rgba(0, 0, 0, 0.35)">
+    <div class="page" element-loading-background="rgba(0, 0, 0, 0.35)">
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="params.model" @change="getLayers">
+                <el-select class="value" size="small" v-model="params.model" filterable @change="getLayers">
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
                 </div>
@@ -22,7 +22,7 @@
             <div class="item"><div class="title">target</div><el-input class="value" type='number' size="small" v-model="params.target"  @change="update"/></div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
-        <div class="network">
+        <div class="network" v-loading="loading">
             <div class="input">
                 <div class="image-wrapper">
                     <el-image class="pixelated" :src="params.input">
@@ -89,7 +89,7 @@ export default {
             models: [],
             images: {},
             params: {
-                model: 'vgg19',
+                model: 'torch/resnet18',
                 input: '',
                 layer: 37,
                 target: null

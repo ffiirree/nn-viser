@@ -61,7 +61,7 @@ export default {
             models: [],
             images: {},
             params: {
-                model: 'alexnet',
+                model: 'vgnet_g_1_0mp',
                 input: '',
                 target: null
             },

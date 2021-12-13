@@ -41,7 +41,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="add ops">+</div>
+                <div class="add ops">-</div>
                 <div class="noise block">
                     <div class="epsilon">{{params.epsilon}}</div>
                     <div class="times">&times;</div>

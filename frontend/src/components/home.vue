@@ -75,11 +75,6 @@
                             },
                             {
                                 icon: 'fire',
-                                index: '/augmentedgrad',
-                                title: 'AugmentedGrad'
-                            },
-                            {
-                                icon: 'fire',
                                 index: '/accumulated_grad',
                                 title: 'AccumulatedGrad'
                             },
@@ -121,11 +116,6 @@
                                 title: 'FGSM Activations Diff'
                             }
                         ]
-                    },
-                    {
-                        icon: 'fire',
-                        index: '/dim_reduction',
-                        title: 'Dimensionality Reduction'
                     }
                 ],
             }

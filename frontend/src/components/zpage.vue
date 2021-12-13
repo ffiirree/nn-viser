@@ -47,7 +47,7 @@
         name: 'z-page',
         data() {
             return {
-                collapse: false,
+                collapse: true,
                 connected : false
             }
         },

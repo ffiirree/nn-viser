@@ -9,9 +9,13 @@ import torchvision
 import matplotlib.cm as cm
 
 from cvm.models.core import blocks
+from typing import List
 
 __all__ = ['LayerHook', 'LayersHook',
            'ActivationsHook', 'GradientsHook', 'FiltersHook', 'StandardKernel']
+
+
+logger = make_logger()
 
 
 class LayerHook:
@@ -84,6 +88,7 @@ class ActivationsHook:
         model: nn.Module,
         split_types: tuple = (nn.Conv2d, nn.Linear),
         stop_types: tuple = None,
+        hook_layers: int = 0
     ):
         self.model = model
         self.activations = []
@@ -94,7 +99,10 @@ class ActivationsHook:
         self.max = -sys.float_info.max
         self.min = sys.float_info.max
 
-        for _, layer in named_layers(model):
+        for i, (_, layer) in enumerate(named_layers(model)):
+            if hook_layers != 0 and i >= hook_layers:
+                break
+
             if self.stop_types and isinstance(layer, self.stop_types):
                 break
 
@@ -425,27 +433,26 @@ class GradientsHook:
 
 
 class FiltersHook:
-    def __init__(self, model: nn.Module) -> None:
+    def __init__(self, model: nn.Module, stride: bool = 1, size: int = 0) -> None:
         self.filters = []
-        self.index = 0
+        self.index = 1
 
-        for name, layer in model.named_modules():
-            if isinstance(layer, (nn.Conv2d, blocks.GaussianFilter)) and layer.kernel_size != (1, 1):
-                self.index = len(self.filters)
-                self.filters.append(
-                    (f'{name}_s{layer.stride[0]}_k{layer.out_channels:03}', layer.weight.detach()))
+        for _, layer in model.named_modules():
+            if isinstance(layer, (nn.Conv2d, blocks.GaussianFilter, blocks.FixedConv2d)):
+                if (layer.stride[0] == stride or stride == 0) and (layer.kernel_size[0] == size or size == 0):
+                    self.filters.append(
+                        (f'{self.index:02d}S{layer.stride[0]}K{layer.out_channels:03d}', layer.weight.detach()))
+                self.index += 1
 
     @staticmethod
     def _save_image(name: str, filter: torch.Tensor, range: torch.Tensor = None):
-        # attrs
-        low, high = filter.min(), filter.max()
-        to_zero = torch.abs(filter).min()
-        
-        for kernel in filter:
-            if kernel.flatten(0)[kernel.numel() // 2] < 0:
-                kernel.mul_(-1)
-                 
-        filename = f"{name}_{low:5.4f}_{to_zero:5.4f}_{high:5.4f}_{filter.sum():5.4f}.png"
+
+        if filter.shape[-1] != 1:
+            for kernel in filter:
+                if kernel.flatten(0)[kernel.numel() // 2] < 0:
+                    kernel.mul_(-1)
+
+        filename = f"{name}.png"
         save_RdBu_image(filename, filter, range=range)
         return filename
 
@@ -455,16 +462,19 @@ class FiltersHook:
 
         res = []
         for i, (name, filters) in enumerate(self.filters):
+            logger.info(f'saving layer[{i:2d}/{len(self.filters)}]: {name}')
             res.append({'name': name, "filters": []})
-            range = None  # max(abs(filters.min()), abs(filters.max()))
+            range = None# max(abs(filters.min()), abs(filters.max()))
             for idx, filter in enumerate(filters):
                 res[i]['filters'].append(
                     self._save_image(
-                        f'{dir}/{name}_{idx}',
+                        f'{dir}/{name}/{idx}',
                         filter,
                         range
                     )
                 )
+                res[i]['size'] = filter.shape[-1]
+        logger.info('saved')
         return res
 
     def __str__(self) -> str:

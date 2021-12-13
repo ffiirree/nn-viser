@@ -3,7 +3,7 @@
         <div class="menu">
             <div class="item">
                 <div class="title">model</div>
-                <el-select class="value" size="small" v-model="params.model" @change="update">
+                <el-select class="value" size="small" v-model="params.model" filterable>
                     <el-option v-for="model in models" :key="model" :value='model'/>
                 </el-select>
             </div>
@@ -15,16 +15,20 @@
             </div>
             <div class="item">
                 <div class="title">scope</div>
-                <el-select class="value" size="small" v-model="params.scope" @change="update">
+                <el-select class="value" size="small" v-model="params.scope">
                     <el-option value='global'/>
                     <el-option value='unit'/>
                     <el-option value='layer'/>
                     <el-option value='channel'/>
                 </el-select>
             </div>
+            <div class="item">
+                <div class="title">layers</div>
+                <el-input class="value" size="small" v-model="params.layers" type='number'/>
+            </div>
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
-        <div class="network">
+        <div class="network" v-loading="loading">
             <div class="unit">
                 <div class="layer">
                     <div class="name">input</div>
@@ -75,8 +79,10 @@ export default {
             params: {
                 model: 'vgg11',
                 input: '',
-                scope: 'layer'
-            }
+                scope: 'layer',
+                layers: 0
+            },
+            loading: false
         };
     },
     created() {
@@ -95,9 +101,8 @@ export default {
             console.log(data)
         },
         response_activations(data) {
-            // console.log(data)
             this.res = data
-            this.$forceUpdate()
+            this.loading = false
         },
         topk(data) {
             this.topk = data;
@@ -112,6 +117,8 @@ export default {
             this.$socket.emit("get_images")
         },
         update() {
+            this.loading = true
+            this.res = []
             this.$socket.emit("activations", this.params);
         },
     }

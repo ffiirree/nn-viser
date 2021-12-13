@@ -9,16 +9,28 @@
             </div>
             <div class="item">
                 <div class="title">Weights</div>
-                <el-input class="value" size="small" v-model="params.pth" />
+                <el-input class="value" size="small" v-model="params.pth"/>
             </div>
+
+            <div class="item">
+                <div class="title">Size</div>
+                <el-input class="value" size="small" v-model="params.size" type='number'/>
+            </div>
+
+            <div class="item">
+                <div class="title">Stride</div>
+                <el-input class="value" size="small" v-model="params.stride" type='number'/>
+            </div>
+
+            
             <div class="item"><div class="title"></div><el-button icon='el-icon-refresh' type="primary" size="small" circle  @click="update"/></div>
         </div>
-        <div class="network">
+        <div class="network" v-loading="loading">
             <div class="layer" v-for="(layer, index) in res" :key="index">
                 <div class="name">{{layer.name}}</div>
                 <div class="filters">
                     <div class="filter" v-for="(filter, index) in layer.filters" :key="index">
-                        <img class="pixelated" :src="filter" :title="index"/>
+                        <img :width="layer.size == 1 ? 8: 24" class="pixelated" :src="filter" :title="index"/>
                     </div>
                 </div>
             </div>
@@ -34,9 +46,12 @@ export default {
             images: {},
             res: [],
             params: {
-                model: 'regnet_x_400mf',
-                pth: null
-            }
+                model: 'torch/regnet_x_400mf',
+                size: 0,
+                pth: null,
+                stride: 1
+            },
+            loading: false
         };
     },
     created() {
@@ -48,6 +63,7 @@ export default {
         },
         response_filters(data) {
             this.res = data
+            this.loading = false
         },
         logs(data) {
             console.log(data)
@@ -58,6 +74,8 @@ export default {
             this.$socket.emit('get_models')
         },
         update() {
+            this.loading = true
+            this.res = []
             this.$socket.emit("filters", this.params);
         },
     }
@@ -91,8 +109,8 @@ export default {
 
                 .filter {
                     img {
-                        width: 24px;
-                        padding: 0 1px;
+                        // width: 16px;
+                        // padding: 0 1px;
                         // height: 30px;
                     }
                 }

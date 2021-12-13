@@ -9,7 +9,7 @@ import numpy as np
 from viser.attrs import *
 from viser.attack import *
 from viser.utils import *
-from viser.hooks import GradientsHook, ActivationsHook, FiltersHook, LayerHook, StandardKernel
+from viser.hooks import GradientsHook, ActivationsHook, FiltersHook, LayerHook
 import torchvision.transforms.functional as TF
 import time
 import matplotlib.cm as cm
@@ -22,7 +22,9 @@ STATIC_FOLDER = 'static'
 app = Flask(__name__, static_folder=STATIC_FOLDER,
             template_folder='static/web')
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+logger = make_logger()
 
 
 @app.route("/")
@@ -55,6 +57,10 @@ images = {
     'static/images/tench_n01440764_1113.jpeg': 0  # tench
 }
 
+@socketio.on('disconnect')
+def test_disconnect():
+    logger.info('disconnected')
+
 
 @socketio.on('get_models')
 def get_models():
@@ -68,7 +74,7 @@ def get_images():
 
 @socketio.on('get_layers')
 def model_layers(data):
-    model = create_model(data['model'], pretrained=True)
+    model = create_model(data['model'], pretrained=True, cuda=False)
     layers = []
     for index, (name, layer) in enumerate(named_layers(model)):
         layers.append({'index': index, 'name': name, 'layer': str(layer)})
@@ -79,13 +85,14 @@ def model_layers(data):
 @socketio.on('activations')
 def handle_activations(data):
     model_name = data['model']
-    model = create_model(data['model'], pretrained=True)
+    model = create_model(data['model'], pretrained=True, cuda=False)
     x, _ = get_input(data['input'])
     scope = str(data['scope'])
+    layers = int(data['layers'])
 
     model.eval()
 
-    activations_hook = ActivationsHook(model, stop_types=nn.Linear)
+    activations_hook = ActivationsHook(model, stop_types=nn.Linear, hook_layers=layers)
     activations_hook.activations.append({})
     activations_hook.activations[0]['input'] = x
 
@@ -104,13 +111,11 @@ def handle_activations(data):
 
 @socketio.on('gradients')
 def handle_gradients(data):
-    model = create_model(data['model'], pretrained=True)
+    model = create_model(data['model'], pretrained=True, cuda=False)
     x, _ = get_input(data['input'])
     scope = str(data['scope'])
     target = int(data['target'])
-
-    # x = torch.randn([1, 3, 224, 224])
-
+    
     model.eval()
 
     x.requires_grad_(True)
@@ -131,21 +136,27 @@ def handle_gradients(data):
 
 @socketio.on('filters')
 def handle_saliency(data):
+    logger.info(f'creating {data["model"]}')
     model = create_model(
         data['model'],
         pretrained=True,
-        pth=data['pth']
+        pth=data['pth'],
+        cuda=False
     )
+    
+    logger.info('hooking')
 
-    filters_hook = FiltersHook(model)
+    filters_hook = FiltersHook(model, size=int(data['size']), stride=int(data['stride']))
+    
+    logger.info('saving')
 
-    emit('response_filters', filters_hook.save(f'static/out/{time.time()}'))
+    emit('response_filters', filters_hook.save(f'static/out/{data["model"]}_{time.time()}'))
 
 @socketio.on('deep_dream')
 def handle_guided_saliency(data):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    model = create_model(data['model'], pretrained=True)
+    model = create_model(data['model'], pretrained=True, cuda=False)
     model.to(device)
     model.eval()
 
@@ -366,103 +377,6 @@ def handle_saliency(data):
     })
 
 
-@socketio.on('augmentedgrad')
-def handle_saliency(data):
-    model = create_model(data['model'], pretrained=True)
-    x, x_c = get_input(data['input'])
-    target = int(data['target'])
-
-    # mean = [0.485, 0.456, 0.406]
-    # std  = [0.229, 0.224, 0.225]
-
-    # original = Image.open(data['input']).convert('RGB')
-    # opencvImage = cv2.cvtColor(np.array(original), cv2.COLOR_RGB2BGR)
-    # image = cv2.bilateralFilter(opencvImage,  19, 19 * 2, 19 / 2)
-    # filename = f'static/out/bilateral_{time.time()}.png'
-    # cv2.imwrite(filename, image)
-    # emit('bilateral', { "image": filename })
-
-    # x = TF.normalize(TF.to_tensor(image), mean, std).unsqueeze(0)
-    # original = read_image(data['input'])
-
-    ops = [
-        # CroppedPad([224 - 16, 224], [16, 0]),
-        # CroppedPad([224 - 16, 224], [0, 0]),
-        # CroppedPad([224, 224 - 16], [0, 16]),
-        # CroppedPad([224, 224 - 16], [0, 0]),
-        # CroppedPad([224 - 16, 224 - 16], [16, 16]),
-        # CroppedPad([224 - 16, 224 - 16], [0, 0]),
-        Original(),
-        # Invert(),
-        HorizontalFlip(),
-        # Compose([HorizontalFlip(), Invert()]),
-        # VerticalFlip(),
-
-        # GaussianBlur([3, 3]),
-        GaussianBlur([5, 5]),
-        GaussianBlur([7, 7]),
-        GaussianBlur([9, 9]),
-        # GaussianBlur([11, 11]),
-        # GaussianBlur([13, 13]),
-        # Compose([HorizontalFlip(), GaussianBlur([3, 3])]),
-        Compose([HorizontalFlip(), GaussianBlur([5, 5])]),
-        Compose([HorizontalFlip(), GaussianBlur([7, 7])]),
-        Compose([HorizontalFlip(), GaussianBlur([9, 9])]),
-        # Compose([HorizontalFlip(), GaussianBlur([11, 11])]),
-        # Compose([HorizontalFlip(), GaussianBlur([13, 13])]),
-        AdjustSharpness(1.35),
-        AdjustSharpness(1.25),
-        AdjustSharpness(1.15),
-        AdjustSharpness(0.75),
-        AdjustSharpness(0.85),
-        AdjustSharpness(0.95),
-        Compose([HorizontalFlip(), AdjustSharpness(0.95)]),
-        Compose([HorizontalFlip(), AdjustSharpness(0.85)]),
-        Compose([HorizontalFlip(), AdjustSharpness(0.75)]),
-        Compose([HorizontalFlip(), AdjustSharpness(1.15)]),
-        Compose([HorizontalFlip(), AdjustSharpness(1.25)]),
-        Compose([HorizontalFlip(), AdjustSharpness(1.35)]),
-        # AdjustBrightness(0.65),
-        # AdjustBrightness(1.35),
-        # AdjustContrast(0.65),
-        # AdjustContrast(1.35),
-        # Compose([HorizontalFlip(), AdjustBrightness(0.65)]),
-        # Compose([HorizontalFlip(), AdjustBrightness(1.35)]),
-        # Compose([HorizontalFlip(), AdjustContrast(0.65)]),
-        # Compose([HorizontalFlip(), AdjustContrast(1.35)]),
-        # Compose([VerticalFlip(), AdjustBrightness(0.75)]),
-        # Compose([VerticalFlip(), AdjustBrightness(1.25)]),
-        # Compose([VerticalFlip(), AdjustContrast(0.75)]),
-        # Compose([VerticalFlip(), AdjustContrast(1.25)]),
-
-        # AdjustHue(-0.1),
-        # AdjustHue(0.1),
-        # AdjustHue(-0.2),
-        # AdjustHue(0.2),
-        # AdjustHue(-0.05),
-        # AdjustHue(0.05),
-        # AdjustHue(-0.15),
-        # AdjustHue(0.15),
-        # Noise(20),
-        # Compose([HorizontalFlip(), Noise(20)]),
-        # Noise(2),
-        # Noise(2),
-        # Noise(2),
-        # Noise(2),
-    ]
-
-    augmentgrad = AugmentedGrad(model)
-    attributions = augmentgrad.attribute(x, ops, target, abs=False).squeeze(0)
-
-    emit('response_augmentedgrad', {
-        'Augmented Saliency': save_image(attributions, f'static/out/grad_colorful_{time.time()}.png'),
-        'Augmented Saliency(Abs)': save_image(torch.abs(attributions), f'static/out/grad_colorful_{time.time()}.png'),
-        'Augmented Saliency(Abs) * Image': save_image(normalize(torch.abs(attributions)) * x_c, normalize=True, filename=f'static/out/grad_x_image_colorful_{time.time()}.png'),
-        'Augmented Saliency(Grayscale)': save_image(torch.sum(torch.abs(attributions), dim=0), f'static/out/grad_grayscale_{time.time()}.png'),
-        'Augmented Saliency(Grayscale) * Image': save_image(torch.sum(torch.abs(attributions * x.squeeze(0).detach()), dim=0), f'static/out/grad_x_image_{time.time()}.png')
-    })
-
-
 @socketio.on('accumulatedgrad')
 def handle_accumulatedgrad(data):
     model = create_model(data['model'], pretrained=True)
@@ -489,7 +403,7 @@ def handle_accumulatedgrad(data):
 
 @socketio.on('gradcam')
 def handle_saliency(data):
-    model = create_model(data['model'], pretrained=True)
+    model = create_model(data['model'], pretrained=True, cuda=False)
     x, image = get_input(data['input'])
     target = int(data['target'])
 

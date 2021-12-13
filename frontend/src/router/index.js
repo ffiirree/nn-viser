@@ -58,11 +58,6 @@ export const routes = [
                 meta: { title: 'GradCAM' }
             },
             {
-                path: '/augmentedgrad',
-                component: () => import('../pages/augmentedgrad'),
-                meta: { title: 'AugmentedGrad' }
-            },
-            {
                 path: '/intergratedgrad',
                 component: () => import('../pages/intergratedgrad'),
                 meta: { title: 'IntergratedGrad' }

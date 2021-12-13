@@ -63,7 +63,7 @@ def save_RdBu_image(filename: str, image: torch.Tensor, range: torch.Tensor = No
     image = image.permute((0, 3, 1, 2))
 
     torchvision.utils.save_image(
-        image, filename, nrow=1, padding=1, normalize=False)
+        image, filename, nrow=1, padding=0, normalize=False)
     return filename
 
 

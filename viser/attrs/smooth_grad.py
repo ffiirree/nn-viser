@@ -14,7 +14,6 @@ class SmoothGrad(Attribution):
         
         grads = []
         std = noise_level * (input.max() - input.min())
-        print(noise_level)
         
         for _ in range(epochs):
             x = input.detach().clone() + torch.normal(mean=0, std=std, size=input.shape)

@@ -12,7 +12,7 @@
     "core-js": "^3.19.1",
     "element-ui": "^2.15.6",
     "lato-font": "^3.0.0",
-    "socket.io": "^3.1.2",
+    "socket.io": "^4.4.0",
     "vue": "^2.6.14",
     "vue-awesome": "^4.3.1",
     "vue-axios": "^3.4.0",
